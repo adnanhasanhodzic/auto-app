@@ -1,0 +1,81 @@
+name: Build MOJ AUTO APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Preuzmi kod
+        uses: actions/checkout@v4
+
+      - name: Postavi Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instaliraj dependencies
+        run: npm install
+
+      - name: Instaliraj Capacitor
+        run: |
+          npm install @capacitor/core@7 @capacitor/android@7
+          npm install --save-dev @capacitor/cli@7
+          npm install --save-dev @capacitor/assets
+
+      - name: Napravi Capacitor konfiguraciju
+        run: |
+          cat > capacitor.config.ts <<'EOF'
+          import type { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.mojauto.app',
+            appName: 'MOJ AUTO',
+            webDir: 'dist',
+            bundledWebRuntime: false
+          };
+
+          export default config;
+          EOF
+
+      - name: Build React aplikacije
+        run: npm run build
+
+      - name: Pripremi logo
+        run: |
+          mkdir -p resources
+          cp src/MA-LOGO.png resources/icon.png
+
+      - name: Generiši Android ikone
+        run: npx capacitor-assets generate --android
+
+      - name: Dodaj Android platformu
+        run: npx cap add android
+
+      - name: Kopiraj web aplikaciju u Android
+        run: npx cap copy android
+
+      - name: Sinhronizuj Capacitor
+        run: npx cap sync android
+
+      - name: Postavi Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Sačuvaj APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MOJ-AUTO-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
