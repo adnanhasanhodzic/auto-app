@@ -93,22 +93,35 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
 
-          if '<application' not in text:
+          start = text.find('<application')
+          if start == -1:
               raise RuntimeError('AndroidManifest.xml nema application element.')
 
-          # Svježi Capacitor manifest se ovdje mijenja jednostavnim literalnim
-          # replaceom. Nema regexa i nema zavisnosti od XML formatiranja.
-          text = text.replace(
+          end = text.find('>', start)
+          if end == -1:
+              raise RuntimeError('application element nije ispravno zatvoren.')
+
+          tag = text[start:end + 1]
+
+          # Ukloni Capacitorove postojeće vrijednosti ikona ako postoje,
+          # da ne nastanu dupli android:icon/android:roundIcon atributi.
+          tag = re.sub(r'\s+android:icon="[^"]*"', '', tag)
+          tag = re.sub(r'\s+android:roundIcon="[^"]*"', '', tag)
+
+          tag = tag.replace(
               '<application',
               '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
               1
           )
 
+          text = text[:start] + tag + text[end + 1:]
           manifest.write_text(text)
+
           print('MA-LOGO.png -> @mipmap/ic_launcher')
           PY
 
