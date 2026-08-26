@@ -22,7 +22,7 @@ jobs:
       - name: Instaliraj dependencies
         run: npm install
 
-      - name: Instaliraj Capacitor i native PDF podršku
+      - name: Instaliraj Capacitor i PDF podršku
         run: |
           npm install @capacitor/core@7 @capacitor/android@7
           npm install --save-dev @capacitor/cli@7
@@ -44,35 +44,31 @@ jobs:
         run: npx cap add android
 
       # =========================================================
-      # PDF EXPORT - NATIVE ANDROID PDF OPENER
+      # PDF EXPORT - mijenja samo mehanizam izvoza.
+      # Postojeći HTML izvještaj i GUI ostaju isti.
       # =========================================================
-
-      - name: Ispravi PDF export za Android
+      - name: Prebaci PDF export na native Android
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('src/components/ExpensesScreen.tsx')
           text = path.read_text()
 
-          # Native PDF imports
           marker = "import { getDateTimestamp, parseCustomDate } from '../utils/dateUtils';"
           imports = marker + "\nimport MA_LOGO from '../MA-LOGO.png';\nimport html2pdf from 'html2pdf.js';\nimport { Filesystem, Directory } from '@capacitor/filesystem';\nimport { FileOpener } from '@capacitor-community/file-opener';"
-          if "@capacitor-community/file-opener" not in text:
+
+          if '@capacitor-community/file-opener' not in text:
               if marker not in text:
                   raise RuntimeError('Import marker u ExpensesScreen.tsx nije pronađen.')
               text = text.replace(marker, imports, 1)
 
-          # The export must be asynchronous because the PDF is generated,
-          # written to native storage and then opened by Android.
           text = text.replace(
-              "const handlePrintPdf = () => {",
-              "const handlePrintPdf = async () => {",
+              'const handlePrintPdf = () => {',
+              'const handlePrintPdf = async () => {',
               1
           )
 
-          # Use the real application logo in the generated report.
           text = text.replace(
               '<div class="logo-badge">🚗</div>',
               '<img class="logo-badge" src="${MA_LOGO}" alt="MOJ AUTO" />',
@@ -106,18 +102,25 @@ jobs:
           if old_css in text:
               text = text.replace(old_css, new_css, 1)
 
-          # Replace only the old popup/print mechanism. The existing HTML report
-          # remains intact; it is rendered to a real PDF instead of a WebView popup.
-          old_block = re.compile(
-              r'''    const printWindow = window\.open\('', '_blank'\);\n'''
-              r'''    if \(!printWindow\) \{\n'''
-              r'''      alert\('Molimo omogućite skočni prozor \(pop-up\) za štampanje / preuzimanje PDF izvještaja\.'\);\n'''
-              r'''      return;\n'''
-              r'''    \}\n''',
-              re.MULTILINE
-          )
+          # Remove the old popup creation block only.
+          old_popup = '''    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Molimo omogućite skočni prozor (pop-up) za štampanje / preuzimanje PDF izvještaja.');
+      return;
+    }
 
-          new_block = '''    const reportFileName = `MOJ-AUTO-${pdfYear}-${pdfScope}.pdf`;
+'''
+          if old_popup not in text:
+              raise RuntimeError('Stari window.open PDF blok nije pronađen.')
+          text = text.replace(old_popup, '', 1)
+
+          # Replace the final printWindow block, which occurs AFTER htmlContent exists.
+          old_tail = '''    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setIsPdfModalOpen(false);'''
+
+          new_tail = '''    const reportFileName = `MOJ-AUTO-${pdfYear}-${pdfScope}.pdf`;
 
     try {
       const pdfContainer = document.createElement('div');
@@ -130,7 +133,6 @@ jobs:
       pdfContainer.style.zIndex = '-1';
       document.body.appendChild(pdfContainer);
 
-      // Wait for the real MA-LOGO.png image to finish loading before rendering.
       const logoImage = pdfContainer.querySelector('.logo-badge') as HTMLImageElement | null;
       if (logoImage && !logoImage.complete) {
         await new Promise<void>((resolve) => {
@@ -186,8 +188,6 @@ jobs:
 
       setIsPdfModalOpen(false);
 
-      // IMPORTANT: hand the PDF to Android's native file handler.
-      // This opens the installed/default PDF application, not the MOJ AUTO WebView.
       await FileOpener.open({
         filePath: uri,
         contentType: 'application/pdf',
@@ -196,50 +196,26 @@ jobs:
     } catch (error) {
       console.error('PDF export error:', error);
       alert('Nije moguće otvoriti PDF. Provjerite da li na telefonu postoji aplikacija za otvaranje PDF datoteka.');
-    }
-'''
+    }'''
 
-          if not old_block.search(text):
-              raise RuntimeError('Stari window.open PDF blok nije pronađen.')
-          text = old_block.sub(new_block, text, count=1)
-
-          old_tail = '''    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    setIsPdfModalOpen(false);'''
-
-          if old_tail in text:
-              text = text.replace(old_tail, '', 1)
-          else:
+          if old_tail not in text:
               raise RuntimeError('Stari printWindow završni blok nije pronađen.')
+          text = text.replace(old_tail, new_tail, 1)
 
           path.write_text(text)
-          print('PDF export patched: native Filesystem + FileOpener + html2pdf.js')
+          print('Native Android PDF export patch completed.')
           PY
 
       # =========================================================
-      # MA-LOGO.png = IKONA INSTALIRANE APLIKACIJE
-      # Ne mijenja logo niti sliku unutar React GUI-ja.
+      # LOGO APLIKACIJE
       # =========================================================
-
       - name: Provjeri MA-LOGO.png
         run: |
           test -f src/MA-LOGO.png
-          echo "MA-LOGO.png pronađen"
-          ls -lh src/MA-LOGO.png
           file src/MA-LOGO.png
 
       - name: Instaliraj ImageMagick
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-
-      - name: Ukloni Capacitor default adaptive ikone
-        run: |
-          rm -rf android/app/src/main/res/mipmap-anydpi-v26
-          rm -rf android/app/src/main/res/mipmap-anydpi
-          rm -rf android/app/src/main/res/mipmap-anydpi-v24
-          rm -rf android/app/src/main/res/mipmap-anydpi-v21
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
 
       - name: Generiši launcher ikone iz MA-LOGO.png
         run: |
@@ -248,13 +224,12 @@ jobs:
           mkdir -p android/app/src/main/res/mipmap-xhdpi
           mkdir -p android/app/src/main/res/mipmap-xxhdpi
           mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/mipmap-anydpi android/app/src/main/res/mipmap-anydpi-v24 android/app/src/main/res/mipmap-anydpi-v21
           convert src/MA-LOGO.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
           cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
           cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
           cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
@@ -266,47 +241,30 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
-
           start = text.find('<application')
           if start == -1:
               raise RuntimeError('AndroidManifest.xml nema application element.')
-
           end = text.find('>', start)
           if end == -1:
               raise RuntimeError('application element nije ispravno zatvoren.')
-
           tag = text[start:end + 1]
           tag = re.sub(r'\s+android:icon="[^"]*"', '', tag)
           tag = re.sub(r'\s+android:roundIcon="[^"]*"', '', tag)
-          tag = tag.replace(
-              '<application',
-              '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
-              1
-          )
-
-          text = text[:start] + tag + text[end + 1:]
-          manifest.write_text(text)
-
-          print('MA-LOGO.png -> @mipmap/ic_launcher')
+          tag = tag.replace('<application', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"', 1)
+          manifest.write_text(text[:start] + tag + text[end + 1:])
           PY
 
-          grep -n '<application' android/app/src/main/AndroidManifest.xml
-
       # =========================================================
-      # PRAVI IMMERSIVE FULLSCREEN
+      # IMMERSIVE FULLSCREEN - bez sata, mreže i baterije
       # =========================================================
-
-      - name: Postavi pravi fullscreen - bez sata, mreže i baterije
+      - name: Postavi pravi fullscreen
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           main_activity = Path('android/app/src/main/java/com/mojauto/app/MainActivity.java')
           main_activity.parent.mkdir(parents=True, exist_ok=True)
-
           main_activity.write_text(r'''package com.mojauto.app;
 
           import android.os.Bundle;
@@ -319,15 +277,11 @@ jobs:
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
-
               private final Handler fullscreenHandler = new Handler();
 
               @Override
               public void onCreate(Bundle savedInstanceState) {
-                  getWindow().setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
+                  getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
                   super.onCreate(savedInstanceState);
                   hideSystemBars();
               }
@@ -349,23 +303,14 @@ jobs:
 
               private void hideSystemBars() {
                   Window window = getWindow();
-
-                  window.setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
-
+                  window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
                   View decorView = window.getDecorView();
 
                   if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                       window.setDecorFitsSystemWindows(false);
-
                       WindowInsetsController controller = window.getInsetsController();
-
                       if (controller != null) {
-                          controller.setSystemBarsBehavior(
-                              WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                          );
+                          controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
                           controller.hide(WindowInsets.Type.systemBars());
                       }
                   } else {
@@ -381,10 +326,6 @@ jobs:
               }
           }
           ''')
-
-          print('TRUE IMMERSIVE FULLSCREEN configured.')
-          print('Status bar: HIDDEN')
-          print('Navigation bar: HIDDEN')
           PY
 
       - name: Build React aplikacije
