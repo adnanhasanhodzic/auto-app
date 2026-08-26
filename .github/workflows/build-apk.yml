@@ -22,10 +22,11 @@ jobs:
       - name: Instaliraj dependencies
         run: npm install
 
-      - name: Instaliraj Capacitor
+      - name: Instaliraj Capacitor i native PDF podršku
         run: |
           npm install @capacitor/core@7 @capacitor/android@7
           npm install --save-dev @capacitor/cli@7
+          npm install @capacitor/filesystem@7 @capacitor-community/file-opener@7 html2pdf.js@0.14.0
 
       - name: Napravi Capacitor konfiguraciju
         run: |
@@ -39,11 +40,182 @@ jobs:
           export default config;
           EOF
 
-      - name: Build React aplikacije
-        run: npm run build
-
       - name: Dodaj Android platformu
         run: npx cap add android
+
+      # =========================================================
+      # PDF EXPORT - NATIVE ANDROID PDF OPENER
+      # =========================================================
+
+      - name: Ispravi PDF export za Android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/components/ExpensesScreen.tsx')
+          text = path.read_text()
+
+          # Native PDF imports
+          marker = "import { getDateTimestamp, parseCustomDate } from '../utils/dateUtils';"
+          imports = marker + "\nimport MA_LOGO from '../MA-LOGO.png';\nimport html2pdf from 'html2pdf.js';\nimport { Filesystem, Directory } from '@capacitor/filesystem';\nimport { FileOpener } from '@capacitor-community/file-opener';"
+          if "@capacitor-community/file-opener" not in text:
+              if marker not in text:
+                  raise RuntimeError('Import marker u ExpensesScreen.tsx nije pronađen.')
+              text = text.replace(marker, imports, 1)
+
+          # The export must be asynchronous because the PDF is generated,
+          # written to native storage and then opened by Android.
+          text = text.replace(
+              "const handlePrintPdf = () => {",
+              "const handlePrintPdf = async () => {",
+              1
+          )
+
+          # Use the real application logo in the generated report.
+          text = text.replace(
+              '<div class="logo-badge">🚗</div>',
+              '<img class="logo-badge" src="${MA_LOGO}" alt="MOJ AUTO" />',
+              1
+          )
+
+          old_css = '''          .logo-badge {
+            width: 38px;
+            height: 38px;
+            background: #1D68F2;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: 18px;
+          }'''
+
+          new_css = '''          .logo-badge {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 4px;
+            display: block;
+          }'''
+
+          if old_css in text:
+              text = text.replace(old_css, new_css, 1)
+
+          # Replace only the old popup/print mechanism. The existing HTML report
+          # remains intact; it is rendered to a real PDF instead of a WebView popup.
+          old_block = re.compile(
+              r'''    const printWindow = window\.open\('', '_blank'\);\n'''
+              r'''    if \(!printWindow\) \{\n'''
+              r'''      alert\('Molimo omogućite skočni prozor \(pop-up\) za štampanje / preuzimanje PDF izvještaja\.'\);\n'''
+              r'''      return;\n'''
+              r'''    \}\n''',
+              re.MULTILINE
+          )
+
+          new_block = '''    const reportFileName = `MOJ-AUTO-${pdfYear}-${pdfScope}.pdf`;
+
+    try {
+      const pdfContainer = document.createElement('div');
+      pdfContainer.innerHTML = htmlContent;
+      pdfContainer.style.position = 'fixed';
+      pdfContainer.style.left = '-100000px';
+      pdfContainer.style.top = '0';
+      pdfContainer.style.width = '794px';
+      pdfContainer.style.background = '#FFFFFF';
+      pdfContainer.style.zIndex = '-1';
+      document.body.appendChild(pdfContainer);
+
+      // Wait for the real MA-LOGO.png image to finish loading before rendering.
+      const logoImage = pdfContainer.querySelector('.logo-badge') as HTMLImageElement | null;
+      if (logoImage && !logoImage.complete) {
+        await new Promise<void>((resolve) => {
+          logoImage.onload = () => resolve();
+          logoImage.onerror = () => resolve();
+        });
+      }
+
+      const pdfBlob = await html2pdf()
+        .set({
+          margin: 0,
+          filename: reportFileName,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#FFFFFF',
+            scrollX: 0,
+            scrollY: 0,
+            logging: false,
+          },
+          jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait',
+          },
+          pagebreak: { mode: ['css', 'legacy'] },
+        })
+        .from(pdfContainer)
+        .outputPdf('blob');
+
+      document.body.removeChild(pdfContainer);
+
+      const arrayBuffer = await pdfBlob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      const chunkSize = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64Data = btoa(binary);
+
+      await Filesystem.writeFile({
+        path: reportFileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      const { uri } = await Filesystem.getUri({
+        path: reportFileName,
+        directory: Directory.Cache,
+      });
+
+      setIsPdfModalOpen(false);
+
+      // IMPORTANT: hand the PDF to Android's native file handler.
+      // This opens the installed/default PDF application, not the MOJ AUTO WebView.
+      await FileOpener.open({
+        filePath: uri,
+        contentType: 'application/pdf',
+        openWithDefault: true,
+      });
+    } catch (error) {
+      console.error('PDF export error:', error);
+      alert('Nije moguće otvoriti PDF. Provjerite da li na telefonu postoji aplikacija za otvaranje PDF datoteka.');
+    }
+'''
+
+          if not old_block.search(text):
+              raise RuntimeError('Stari window.open PDF blok nije pronađen.')
+          text = old_block.sub(new_block, text, count=1)
+
+          old_tail = '''    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setIsPdfModalOpen(false);'''
+
+          if old_tail in text:
+              text = text.replace(old_tail, '', 1)
+          else:
+              raise RuntimeError('Stari printWindow završni blok nije pronađen.')
+
+          path.write_text(text)
+          print('PDF export patched: native Filesystem + FileOpener + html2pdf.js')
+          PY
 
       # =========================================================
       # MA-LOGO.png = IKONA INSTALIRANE APLIKACIJE
@@ -214,6 +386,9 @@ jobs:
           print('Status bar: HIDDEN')
           print('Navigation bar: HIDDEN')
           PY
+
+      - name: Build React aplikacije
+        run: npm run build
 
       - name: Kopiraj web aplikaciju u Android
         run: npx cap copy android
