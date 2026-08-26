@@ -44,22 +44,17 @@ jobs:
       - name: Provjeri MA-LOGO.png
         run: |
           test -f src/MA-LOGO.png
-          echo 'MA-LOGO.png pronađen'
 
       - name: Dodaj Android platformu
         run: npx cap add android
 
-      - name: Dodaj TypeScript deklaraciju za html2pdf
+      - name: Dodaj html2pdf TypeScript deklaraciju
         run: |
-          cat > src/html2pdf.d.ts <<'EOF'
-          declare module 'html2pdf.js';
-          EOF
+          printf '%s\n' "declare module 'html2pdf.js';" > src/html2pdf.d.ts
 
-      - name: Popravi PDF export za Android
+      - name: Popravi PDF export
         run: |
-          echo 'U2VuZGVyIHNvdXJjZSBwYXRjaCB0byBydW5uZXI=' >/dev/null
-          echo 'REPLACE_ME' >/dev/null
-          python3 -c "import base64;exec(base64.b64decode('cHl0aG9uX3NjcmlwdF9wbGFjZWhvbGRlcg==').decode())"
+          echo 'cHJpbnQoJ1JFUExBQ0VfU0NSSVBUJyk=' | base64 --decode | python3
 
       - name: Build React aplikacije
         run: npm run build
@@ -71,13 +66,8 @@ jobs:
 
       - name: Generiši launcher ikone iz MA-LOGO.png
         run: |
-          rm -rf android/app/src/main/res/mipmap-anydpi-v26
-          rm -rf android/app/src/main/res/mipmap-anydpi
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/mipmap-anydpi
+          mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi
           convert src/MA-LOGO.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
@@ -92,34 +82,25 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           p = Path('android/app/src/main/AndroidManifest.xml')
           text = p.read_text()
           start = text.find('<application')
           end = text.find('>', start)
-
           if start < 0 or end < 0:
               raise RuntimeError('Application tag nije pronađen.')
-
           tag = text[start:end + 1]
           tag = re.sub(r'\s+android:icon="[^"]*"', '', tag)
           tag = re.sub(r'\s+android:roundIcon="[^"]*"', '', tag)
-          tag = tag.replace(
-              '<application',
-              '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
-              1
-          )
+          tag = tag.replace('<application', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"', 1)
           p.write_text(text[:start] + tag + text[end + 1:])
           PY
 
-      - name: Postavi pravi immersive fullscreen
+      - name: Postavi immersive fullscreen
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           p = Path('android/app/src/main/java/com/mojauto/app/MainActivity.java')
           p.parent.mkdir(parents=True, exist_ok=True)
-
           p.write_text('''package com.mojauto.app;
 
           import android.os.Bundle;
@@ -146,19 +127,13 @@ jobs:
               @Override
               public void onWindowFocusChanged(boolean hasFocus) {
                   super.onWindowFocusChanged(hasFocus);
-                  if (hasFocus) {
-                      applyImmersiveMode();
-                  }
+                  if (hasFocus) applyImmersiveMode();
               }
 
               private void applyImmersiveMode() {
                   Window window = getWindow();
-                  window.setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
+                  window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
                   window.setDecorFitsSystemWindows(false);
-
                   View decor = window.getDecorView();
                   decor.setSystemUiVisibility(
                       View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -168,17 +143,11 @@ jobs:
                           | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                           | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                   );
-
                   if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                       WindowInsetsController controller = window.getInsetsController();
                       if (controller != null) {
-                          controller.setSystemBarsBehavior(
-                              WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                          );
-                          controller.hide(
-                              WindowInsets.Type.statusBars()
-                                  | WindowInsets.Type.navigationBars()
-                          );
+                          controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                          controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
                       }
                   }
               }
