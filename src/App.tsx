@@ -53,6 +53,7 @@ export default function App() {
   const [carToEdit, setCarToEdit] = useState<CarData | null>(null);
   const [isVehicleSelectorOpen, setIsVehicleSelectorOpen] = useState(false);
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
+  const [editingServiceRecord, setEditingServiceRecord] = useState<ServiceRecord | null>(null);
   const [regularServiceModal, setRegularServiceModal] = useState<{
     isOpen: boolean;
     type: 'mali' | 'veliki';
@@ -641,7 +642,10 @@ export default function App() {
                         setIsDeleteModalOpen(true);
                       }}
                       onOpenVehicleSelector={() => setIsVehicleSelectorOpen(true)}
-                      onOpenAddService={() => setIsAddServiceOpen(true)}
+                      onOpenAddService={() => {
+                        setEditingServiceRecord(null);
+                        setIsAddServiceOpen(true);
+                      }}
                       onOpenRegularService={(type) => setRegularServiceModal({ isOpen: true, type })}
                       onOpenObligationModal={() => setIsDirectObligationOpen(true)}
                       onNavigateTab={(tab) => setActiveTab(tab)}
@@ -652,7 +656,14 @@ export default function App() {
                     <HistoryScreen
                       car={activeCar}
                       services={activeCarServices}
-                      onOpenAddService={() => setIsAddServiceOpen(true)}
+                      onOpenAddService={() => {
+                        setEditingServiceRecord(null);
+                        setIsAddServiceOpen(true);
+                      }}
+                      onEditService={(record) => {
+                        setEditingServiceRecord(record);
+                        setIsAddServiceOpen(true);
+                      }}
                       onDeleteService={handleDeleteServiceRecord}
                       onSaveFuelRecord={handleSaveServiceRecord}
                     />
@@ -665,7 +676,10 @@ export default function App() {
                       obligations={activeCarObligations}
                       maliServis={maliServisStatus}
                       velikiServis={velikiServisStatus}
-                      onOpenAddService={() => setIsAddServiceOpen(true)}
+                      onOpenAddService={() => {
+                        setEditingServiceRecord(null);
+                        setIsAddServiceOpen(true);
+                      }}
                       onOpenRegularService={(type) => setRegularServiceModal({ isOpen: true, type })}
                       onSaveObligation={handleSaveObligation}
                       onDeleteObligation={handleDeleteObligation}
@@ -763,7 +777,11 @@ export default function App() {
           <AddServiceFlowModal
             isOpen={isAddServiceOpen}
             car={activeCar}
-            onClose={() => setIsAddServiceOpen(false)}
+            existingRecord={editingServiceRecord}
+            onClose={() => {
+              setIsAddServiceOpen(false);
+              setEditingServiceRecord(null);
+            }}
             onSaveRecord={handleSaveServiceRecord}
           />
         )}

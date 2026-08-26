@@ -33,6 +33,7 @@ interface ServiceEntryFormViewProps {
   initialTitle: string;
   initialGroup?: string;
   initialItems: string[];
+  existingRecord?: ServiceRecord | null;
   onSave: (record: ServiceRecord) => void;
   onBack: () => void;
 }
@@ -44,6 +45,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   initialTitle,
   initialGroup,
   initialItems,
+  existingRecord,
   onSave,
   onBack,
 }) => {
@@ -58,11 +60,16 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   const isMajorOrMinorService = isMali || isVeliki;
 
   // Form fields
-  const [title, setTitle] = useState(initialTitle || 'Redovni servis');
-  const [date, setDate] = useState(getTodayFormatted());
-  const [mileage, setMileage] = useState<number>(car.mileage || 0);
+  const [title, setTitle] = useState(existingRecord?.title || initialTitle || 'Redovni servis');
+  const [date, setDate] = useState(existingRecord?.date || getTodayFormatted());
+  const [mileage, setMileage] = useState<number>(
+    existingRecord?.mileage !== undefined ? existingRecord.mileage : (car.mileage || 0)
+  );
 
   const initialItemsList = useMemo(() => {
+    if (existingRecord?.items && existingRecord.items.length > 0) {
+      return existingRecord.items;
+    }
     if (isMali) {
       return ['Motorno ulje', 'Filter ulja', 'Filter zraka', 'Filter kabine'];
     }
@@ -70,28 +77,74 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
       return ['Zupčasti remen', 'Vodena pumpa', 'Natezač zupčastog remena', 'PK remen'];
     }
     return initialItems.length > 0 ? initialItems : [initialTitle].filter(Boolean);
-  }, [isMali, isVeliki, initialItems, initialTitle]);
+  }, [existingRecord, isMali, isVeliki, initialItems, initialTitle]);
 
   const [items, setItems] = useState<string[]>(initialItemsList);
   const [newItemText, setNewItemText] = useState('');
   const [isAddingItem, setIsAddingItem] = useState(false);
 
-  const [cost, setCost] = useState<string>('');
+  const [cost, setCost] = useState<string>(
+    existingRecord?.cost !== undefined && existingRecord.cost !== null
+      ? existingRecord.cost.toString()
+      : ''
+  );
   const [currency] = useState<string>('KM');
-  const [note, setNote] = useState('');
-  const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [note, setNote] = useState(existingRecord?.note || '');
+  const [receiptImage, setReceiptImage] = useState<string | null>(existingRecord?.receiptImage || null);
 
-  // Next service intervals - ONLY true by default for Mali/Veliki servis
-  const [trackNextService, setTrackNextService] = useState(isMajorOrMinorService);
-  const [trackMileage, setTrackMileage] = useState(true);
-  const [intervalKm, setIntervalKm] = useState<number>(isVeliki ? 60000 : 10000);
-  const [trackTime, setTrackTime] = useState(true);
-  const [intervalMonths, setIntervalMonths] = useState<number>(isVeliki ? 60 : 12);
+  // Next service intervals - ONLY true by default for Mali/Veliki servis if not editing
+  const [trackNextService, setTrackNextService] = useState(
+    existingRecord
+      ? Boolean(existingRecord.nextService)
+      : isMajorOrMinorService
+  );
+  const [trackMileage, setTrackMileage] = useState(
+    existingRecord?.nextService ? Boolean(existingRecord.nextService.trackMileage) : true
+  );
+  const [intervalKm, setIntervalKm] = useState<number>(
+    existingRecord?.nextService?.intervalKm || (isVeliki ? 60000 : 10000)
+  );
+  const [trackTime, setTrackTime] = useState(
+    existingRecord?.nextService ? Boolean(existingRecord.nextService.trackTime) : true
+  );
+  const [intervalMonths, setIntervalMonths] = useState<number>(
+    existingRecord?.nextService?.intervalMonths || (isVeliki ? 60 : 12)
+  );
 
-  // Warranty (default ON for 'oprema')
-  const [hasWarranty, setHasWarranty] = useState(category === 'oprema');
-  const [warrantyMonths, setWarrantyMonths] = useState<number>(24);
-  const [warrantyStartDate, setWarrantyStartDate] = useState(getTodayFormatted());
+  // Warranty: start date tracks date (service/purchase date) as source of truth
+  const [hasWarranty, setHasWarranty] = useState(
+    existingRecord
+      ? Boolean(existingRecord.warranty?.hasWarranty)
+      : (category === 'oprema')
+  );
+  const [warrantyMonths, setWarrantyMonths] = useState<number>(
+    existingRecord?.warranty?.durationMonths || 24
+  );
+  const [customWarrantyStartDate, setCustomWarrantyStartDate] = useState<string | null>(
+    existingRecord?.warranty?.startDate && existingRecord?.warranty?.startDate !== (existingRecord?.date || date)
+      ? existingRecord.warranty.startDate
+      : null
+  );
+
+  // Always derived from `date` as the single source of truth unless manually customized
+  const warrantyStartDate = customWarrantyStartDate || date;
+
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate);
+    // If user hasn't explicitly set a custom different date, it continues tracking date
+  };
+
+  const handleWarrantyStartDateChange = (newWDate: string) => {
+    if (newWDate === date) {
+      setCustomWarrantyStartDate(null);
+    } else {
+      setCustomWarrantyStartDate(newWDate);
+    }
+  };
+
+  const handleToggleWarranty = (checked: boolean) => {
+    setHasWarranty(checked);
+  };
 
   // Date picker modal states
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -141,13 +194,13 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
 
     const numericCost = parseFloat(cost.replace(',', '.')) || 0;
 
-    const newRecord: ServiceRecord = {
-      id: 'srv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    const savedRecord: ServiceRecord = {
+      id: existingRecord?.id || ('srv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
       carId: car.id,
       category,
       categoryName,
       title: title.trim() || 'Rad na vozilu',
-      subGroup: initialGroup,
+      subGroup: initialGroup || existingRecord?.subGroup,
       date: date.trim() || getTodayFormatted(),
       mileage: Number(mileage) || car.mileage || 0,
       items: items.length > 0 ? items : [title],
@@ -173,10 +226,10 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
             targetDate: trackTime ? targetDateStr : '',
           }
         : undefined,
-      createdAt: Date.now(),
+      createdAt: existingRecord?.createdAt || Date.now(),
     };
 
-    onSave(newRecord);
+    onSave(savedRecord);
   };
 
   return (
@@ -196,7 +249,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
           </button>
           <div className="text-center">
             <h1 className="text-base font-bold text-slate-900 tracking-tight">
-              Novi rad
+              {existingRecord ? 'Uredi rad' : 'Novi rad'}
             </h1>
             <span className="text-[11px] font-semibold text-[#1D68F2]">
               {categoryName} {initialGroup ? `• ${initialGroup}` : ''}
@@ -254,7 +307,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
                 <input
                   type="text"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => handleDateChange(e.target.value)}
                   onClick={() => setIsDatePickerOpen(true)}
                   placeholder="dd.mm.gggg"
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1D68F2] cursor-pointer"
@@ -609,7 +662,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
               <input
                 type="checkbox"
                 checked={hasWarranty}
-                onChange={(e) => setHasWarranty(e.target.checked)}
+                onChange={(e) => handleToggleWarranty(e.target.checked)}
                 className="sr-only peer"
               />
               <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
@@ -665,7 +718,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
                     <input
                       type="text"
                       value={warrantyStartDate}
-                      onChange={(e) => setWarrantyStartDate(e.target.value)}
+                      onChange={(e) => handleWarrantyStartDateChange(e.target.value)}
                       onClick={() => setIsWarrantyDatePickerOpen(true)}
                       placeholder="dd.mm.gggg"
                       className="w-full pl-8 pr-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-600 cursor-pointer"
@@ -722,7 +775,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
         value={date}
         title="Datum rada / servisa"
         onClose={() => setIsDatePickerOpen(false)}
-        onSelect={(newDate) => setDate(newDate)}
+        onSelect={(newDate) => handleDateChange(newDate)}
       />
 
       <DatePickerModal
@@ -730,7 +783,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
         value={warrantyStartDate}
         title="Početak garancije"
         onClose={() => setIsWarrantyDatePickerOpen(false)}
-        onSelect={(newDate) => setWarrantyStartDate(newDate)}
+        onSelect={(newDate) => handleWarrantyStartDateChange(newDate)}
       />
     </div>
   );

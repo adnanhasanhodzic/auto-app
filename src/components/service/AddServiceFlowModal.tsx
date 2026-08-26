@@ -12,6 +12,7 @@ import { DatePickerModal } from '../DatePickerModal';
 interface AddServiceFlowModalProps {
   isOpen: boolean;
   car: CarData;
+  existingRecord?: ServiceRecord | null;
   onClose: () => void;
   onSaveRecord: (record: ServiceRecord) => void;
 }
@@ -21,14 +22,17 @@ type FlowStep = 'category' | 'subgroup' | 'entry' | 'fuel' | 'success';
 export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   isOpen,
   car,
+  existingRecord,
   onClose,
   onSaveRecord,
 }) => {
-  const [step, setStep] = useState<FlowStep>('category');
-  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [primaryTitle, setPrimaryTitle] = useState<string>('');
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [step, setStep] = useState<FlowStep>(existingRecord ? 'entry' : 'category');
+  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(
+    (existingRecord?.category as ServiceCategory) || null
+  );
+  const [selectedItems, setSelectedItems] = useState<string[]>(existingRecord?.items || []);
+  const [primaryTitle, setPrimaryTitle] = useState<string>(existingRecord?.title || '');
+  const [selectedGroup, setSelectedGroup] = useState<string>(existingRecord?.subGroup || '');
   const [savedRecord, setSavedRecord] = useState<ServiceRecord | null>(null);
 
   // Fuel form state
@@ -38,15 +42,30 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   const [fuelError, setFuelError] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
-  // Sync state whenever modal is opened or car changes
+  // Sync state whenever modal is opened or car/existingRecord changes
   React.useEffect(() => {
     if (isOpen) {
-      setFuelDate(formatDateCustom(new Date()));
-      setFuelMileage(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');
-      setFuelCost('');
-      setFuelError(null);
+      if (existingRecord) {
+        setStep('entry');
+        setSelectedCategory((existingRecord.category as ServiceCategory) || 'mehanika');
+        setSelectedItems(existingRecord.items || [existingRecord.title]);
+        setPrimaryTitle(existingRecord.title);
+        setSelectedGroup(existingRecord.subGroup || '');
+        setSavedRecord(null);
+      } else {
+        setStep('category');
+        setSelectedCategory(null);
+        setSelectedItems([]);
+        setPrimaryTitle('');
+        setSelectedGroup('');
+        setSavedRecord(null);
+        setFuelDate(formatDateCustom(new Date()));
+        setFuelMileage(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');
+        setFuelCost('');
+        setFuelError(null);
+      }
     }
-  }, [isOpen, car?.id, car?.mileage]);
+  }, [isOpen, existingRecord?.id]);
 
   if (!isOpen) return null;
 
@@ -130,12 +149,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   };
 
   const handleFinish = () => {
-    // Reset and close
-    setStep('category');
-    setSelectedCategory(null);
-    setSelectedItems([]);
-    setPrimaryTitle('');
-    setSavedRecord(null);
     onClose();
   };
 
@@ -342,12 +355,19 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
               <ServiceEntryFormView
                 car={car}
                 category={selectedCategory}
-                categoryName={categoryDef?.name || 'Rad'}
+                categoryName={categoryDef?.name || existingRecord?.categoryName || 'Rad'}
                 initialTitle={primaryTitle}
                 initialGroup={selectedGroup}
                 initialItems={selectedItems}
+                existingRecord={existingRecord}
                 onSave={handleSaveRecord}
-                onBack={() => setStep('subgroup')}
+                onBack={() => {
+                  if (existingRecord) {
+                    onClose();
+                  } else {
+                    setStep('subgroup');
+                  }
+                }}
               />
             </motion.div>
           )}
@@ -369,7 +389,9 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
 
                 <div className="space-y-1.5">
                   <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-                    {savedRecord.category === 'gorivo'
+                    {existingRecord
+                      ? 'Rad / servis je uspješno izmijenjen'
+                      : savedRecord.category === 'gorivo'
                       ? 'Točenje goriva je uspješno dodano'
                       : 'Rad / servis je uspješno dodan'}
                   </h2>
@@ -411,7 +433,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                   onClick={handleFinish}
                   className="w-full py-3.5 px-4 bg-[#1D68F2] hover:bg-blue-600 active:bg-blue-700 text-white rounded-xl font-bold text-sm uppercase tracking-wider shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
                 >
-                  <span>VRATI SE NA POČETNU</span>
+                  <span>{existingRecord ? 'POTVRDI' : 'VRATI SE NA POČETNU'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

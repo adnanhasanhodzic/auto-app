@@ -28,6 +28,7 @@ interface HistoryScreenProps {
   car: CarData;
   services: ServiceRecord[];
   onOpenAddService: () => void;
+  onEditService?: (record: ServiceRecord) => void;
   onDeleteService: (id: string) => void;
   onSaveFuelRecord?: (record: ServiceRecord) => void;
 }
@@ -36,6 +37,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   car,
   services,
   onOpenAddService,
+  onEditService,
   onDeleteService,
   onSaveFuelRecord,
 }) => {
@@ -98,8 +100,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
       setEditingFuelRecord(record);
       setIsFuelModalOpen(true);
     } else {
-      // For general services
-      onOpenAddService();
+      if (onEditService) {
+        onEditService(record);
+      } else {
+        onOpenAddService();
+      }
     }
   };
 
