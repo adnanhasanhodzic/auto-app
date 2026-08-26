@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          
+
       - name: Instaliraj dependencies
         run: npm install
 
@@ -36,8 +36,7 @@ jobs:
           const config: CapacitorConfig = {
             appId: 'com.mojauto.app',
             appName: 'MOJ AUTO',
-            webDir: 'dist',
-            bundledWebRuntime: false
+            webDir: 'dist'
           };
 
           export default config;
@@ -46,16 +45,55 @@ jobs:
       - name: Build React aplikacije
         run: npm run build
 
-      - name: Pripremi logo
+      - name: Pripremi službeni logo za Android
         run: |
           mkdir -p resources
           cp src/MA-LOGO.png resources/icon.png
 
-      - name: Generiši Android ikone
-        run: npx capacitor-assets generate --android
-
       - name: Dodaj Android platformu
         run: npx cap add android
+
+      - name: Generiši Android launcher ikone iz službenog loga
+        run: npx @capacitor/assets generate --android
+
+      - name: Postavi immersive fullscreen Android ekran
+        run: |
+          mkdir -p android/app/src/main/java/com/mojauto/app
+          cat > android/app/src/main/java/com/mojauto/app/MainActivity.kt <<'EOF'
+          package com.mojauto.app
+
+          import android.graphics.Color
+          import android.os.Bundle
+          import androidx.core.view.WindowCompat
+          import androidx.core.view.WindowInsetsCompat
+          import androidx.core.view.WindowInsetsControllerCompat
+          import com.getcapacitor.BridgeActivity
+
+          class MainActivity : BridgeActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+
+                  WindowCompat.setDecorFitsSystemWindows(window, false)
+                  window.statusBarColor = Color.TRANSPARENT
+                  window.navigationBarColor = Color.TRANSPARENT
+
+                  val controller = WindowInsetsControllerCompat(window, window.decorView)
+                  controller.systemBarsBehavior =
+                      WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                  controller.hide(WindowInsetsCompat.Type.systemBars())
+              }
+
+              override fun onWindowFocusChanged(hasFocus: Boolean) {
+                  super.onWindowFocusChanged(hasFocus)
+                  if (hasFocus) {
+                      val controller = WindowInsetsControllerCompat(window, window.decorView)
+                      controller.systemBarsBehavior =
+                          WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                      controller.hide(WindowInsetsCompat.Type.systemBars())
+                  }
+              }
+          }
+          EOF
 
       - name: Kopiraj web aplikaciju u Android
         run: npx cap copy android
