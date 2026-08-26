@@ -1,0 +1,6 @@
+{
+  "name": "MOJ AUTO",
+  "description": "Android aplikacija za evidenciju i praćenje održavanja, servisa, kilometraže i registracije automobila.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
