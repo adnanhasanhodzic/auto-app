@@ -107,12 +107,8 @@ jobs:
               raise RuntimeError('application element nije ispravno zatvoren.')
 
           tag = text[start:end + 1]
-
-          # Ukloni Capacitorove postojeće vrijednosti ikona ako postoje,
-          # da ne nastanu dupli android:icon/android:roundIcon atributi.
           tag = re.sub(r'\s+android:icon="[^"]*"', '', tag)
           tag = re.sub(r'\s+android:roundIcon="[^"]*"', '', tag)
-
           tag = tag.replace(
               '<application',
               '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
@@ -165,7 +161,7 @@ jobs:
               }
 
               @Override
-              protected void onResume() {
+              public void onResume() {
                   super.onResume();
                   hideSystemBars();
               }
