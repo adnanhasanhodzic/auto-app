@@ -48,7 +48,7 @@ jobs:
         run: npx cap add android
 
       # =========================================================
-      # LOGO
+      # LOGO - ANDROID LAUNCHER ICON
       # =========================================================
 
       - name: Provjeri MA-LOGO.png
@@ -62,6 +62,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
+
+      - name: Ukloni Capacitor adaptive default ikone
+        run: |
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          rm -rf android/app/src/main/res/mipmap-anydpi
+          rm -rf android/app/src/main/res/mipmap-anydpi-v24
+          rm -rf android/app/src/main/res/mipmap-anydpi-v21
 
       - name: Generiši launcher ikone iz MA-LOGO.png
         run: |
@@ -101,61 +108,42 @@ jobs:
           cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
              android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
 
-      - name: Postavi launcher ikonu
+      - name: Postavi MA-LOGO kao launcher ikonu
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          manifest = Path(
-              "android/app/src/main/AndroidManifest.xml"
-          )
-
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
           text = manifest.read_text()
 
-          match = re.search(
-              r'<application\b[^>]*>',
-              text,
-              flags=re.DOTALL
-          )
-
+          match = re.search(r'<application\\b[^>]*>', text, flags=re.DOTALL)
           if not match:
               raise RuntimeError("Application tag nije pronađen.")
 
           tag = match.group(0)
-
-          tag = re.sub(
-              r'\s+android:icon\s*=\s*"[^"]*"',
-              '',
-              tag
-          )
-
-          tag = re.sub(
-              r'\s+android:roundIcon\s*=\s*"[^"]*"',
-              '',
-              tag
-          )
+          tag = re.sub(r'\\s+android:icon\\s*=\\s*"[^"]*"', '', tag)
+          tag = re.sub(r'\\s+android:roundIcon\\s*=\\s*"[^"]*"', '', tag)
 
           tag = tag.replace(
               '<application',
-              '<application '
-              'android:icon="@mipmap/ic_launcher" '
-              'android:roundIcon="@mipmap/ic_launcher"',
+              '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
               1
           )
 
           text = text[:match.start()] + tag + text[match.end():]
-
           manifest.write_text(text)
 
-          print("Launcher ikona postavljena.")
+          print("Launcher ikona = @mipmap/ic_launcher")
           PY
+
+          grep -n '<application' android/app/src/main/AndroidManifest.xml
 
       # =========================================================
       # PRAVI IMMERSIVE FULLSCREEN
       # =========================================================
 
-      - name: Postavi pravi fullscreen
+      - name: Postavi pravi fullscreen - bez status bara i navigacione trake
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -164,17 +152,16 @@ jobs:
               "android/app/src/main/java/com/mojauto/app/MainActivity.java"
           )
 
-          main_activity.parent.mkdir(
-              parents=True,
-              exist_ok=True
-          )
+          main_activity.parent.mkdir(parents=True, exist_ok=True)
 
           main_activity.write_text("""\
           package com.mojauto.app;
 
           import android.os.Bundle;
+          import android.os.Handler;
           import android.view.View;
           import android.view.Window;
+          import android.view.WindowManager;
           import android.view.WindowInsets;
           import android.view.WindowInsetsController;
 
@@ -182,10 +169,24 @@ jobs:
 
           public class MainActivity extends BridgeActivity {
 
+              private final Handler fullscreenHandler = new Handler();
+
               @Override
               public void onCreate(Bundle savedInstanceState) {
+                  // Hide the status bar before the first frame is drawn.
+                  getWindow().setFlags(
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN
+                  );
+
                   super.onCreate(savedInstanceState);
-                  enableFullscreen();
+                  hideSystemBars();
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  hideSystemBars();
               }
 
               @Override
@@ -193,13 +194,28 @@ jobs:
                   super.onWindowFocusChanged(hasFocus);
 
                   if (hasFocus) {
-                      enableFullscreen();
+                      hideSystemBars();
+
+                      // Capacitor/WebView can regain system-bar control after
+                      // the first frame, so enforce immersive mode again.
+                      fullscreenHandler.postDelayed(
+                          this::hideSystemBars,
+                          250
+                      );
                   }
               }
 
-              private void enableFullscreen() {
+              private void hideSystemBars() {
 
                   Window window = getWindow();
+
+                  // Legacy/fullscreen flag for devices below Android 11.
+                  window.setFlags(
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN
+                  );
+
+                  View decorView = window.getDecorView();
 
                   if (android.os.Build.VERSION.SDK_INT >=
                       android.os.Build.VERSION_CODES.R) {
@@ -211,21 +227,18 @@ jobs:
 
                       if (controller != null) {
 
-                          controller.hide(
-                              WindowInsets.Type.statusBars()
-                                  | WindowInsets.Type.navigationBars()
-                                  | WindowInsets.Type.displayCutout()
-                          );
-
                           controller.setSystemBarsBehavior(
                               WindowInsetsController
                                   .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                           );
+
+                          // Hide BOTH the status bar and navigation bar.
+                          controller.hide(WindowInsets.Type.systemBars());
                       }
 
                   } else {
 
-                      window.getDecorView().setSystemUiVisibility(
+                      decorView.setSystemUiVisibility(
                           View.SYSTEM_UI_FLAG_FULLSCREEN
                               | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                               | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -238,12 +251,11 @@ jobs:
           }
           """)
 
-          print("Immersive fullscreen configured.")
+          print("TRUE IMMERSIVE FULLSCREEN configured.")
+          print("Status bar: HIDDEN")
+          print("Navigation bar: HIDDEN")
+          print("System bars return only temporarily by swipe.")
           PY
-
-      # =========================================================
-      # CAPACITOR
-      # =========================================================
 
       - name: Kopiraj web aplikaciju u Android
         run: npx cap copy android
@@ -251,19 +263,11 @@ jobs:
       - name: Sinhronizuj Capacitor
         run: npx cap sync android
 
-      # =========================================================
-      # JAVA
-      # =========================================================
-
       - name: Postavi Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
-      # =========================================================
-      # BUILD APK
-      # =========================================================
 
       - name: Build APK
         working-directory: android
