@@ -36,7 +36,8 @@ jobs:
           const config: CapacitorConfig = {
             appId: 'com.mojauto.app',
             appName: 'MOJ AUTO',
-            webDir: 'dist'
+            webDir: 'dist',
+            bundledWebRuntime: false
           };
 
           export default config;
@@ -45,61 +46,83 @@ jobs:
       - name: Build React aplikacije
         run: npm run build
 
-      - name: Pripremi službeni logo za Android
+      - name: Dodaj Android platformu
+        run: npx cap add android
+
+      - name: Pripremi logo
         run: |
           mkdir -p resources
           cp src/MA-LOGO.png resources/icon.png
 
-      - name: Dodaj Android platformu
-        run: npx cap add android
-
-      - name: Generiši Android launcher ikone iz službenog loga
-        run: npx @capacitor/assets generate --android
-
-      - name: Postavi immersive fullscreen Android ekran
-        run: |
-          mkdir -p android/app/src/main/java/com/mojauto/app
-          cat > android/app/src/main/java/com/mojauto/app/MainActivity.kt <<'EOF'
-          package com.mojauto.app
-
-          import android.graphics.Color
-          import android.os.Bundle
-          import androidx.core.view.WindowCompat
-          import androidx.core.view.WindowInsetsCompat
-          import androidx.core.view.WindowInsetsControllerCompat
-          import com.getcapacitor.BridgeActivity
-
-          class MainActivity : BridgeActivity() {
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-
-                  WindowCompat.setDecorFitsSystemWindows(window, false)
-                  window.statusBarColor = Color.TRANSPARENT
-                  window.navigationBarColor = Color.TRANSPARENT
-
-                  val controller = WindowInsetsControllerCompat(window, window.decorView)
-                  controller.systemBarsBehavior =
-                      WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                  controller.hide(WindowInsetsCompat.Type.systemBars())
-              }
-
-              override fun onWindowFocusChanged(hasFocus: Boolean) {
-                  super.onWindowFocusChanged(hasFocus)
-                  if (hasFocus) {
-                      val controller = WindowInsetsControllerCompat(window, window.decorView)
-                      controller.systemBarsBehavior =
-                          WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                      controller.hide(WindowInsetsCompat.Type.systemBars())
-                  }
-              }
-          }
-          EOF
+      - name: Generiši Android ikone
+        run: npx capacitor-assets generate --android
 
       - name: Kopiraj web aplikaciju u Android
         run: npx cap copy android
 
       - name: Sinhronizuj Capacitor
         run: npx cap sync android
+
+      - name: Postavi fullscreen Android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          main_activity = Path(
+              "android/app/src/main/java/com/mojauto/app/MainActivity.java"
+          )
+
+          main_activity.parent.mkdir(parents=True, exist_ok=True)
+
+          main_activity.write_text("""\
+          package com.mojauto.app;
+
+          import android.os.Bundle;
+          import android.view.Window;
+          import android.view.WindowInsets;
+          import android.view.WindowInsetsController;
+
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  Window window = getWindow();
+
+                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                      WindowInsetsController controller = window.getInsetsController();
+
+                      if (controller != null) {
+                          controller.hide(
+                              WindowInsets.Type.statusBars()
+                                  | WindowInsets.Type.navigationBars()
+                          );
+
+                          controller.setSystemBarsBehavior(
+                              WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                          );
+                      }
+
+                      window.setDecorFitsSystemWindows(false);
+                  } else {
+                      window.getDecorView().setSystemUiVisibility(
+                          android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+                              | android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                              | android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                              | android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                              | android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                              | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                      );
+                  }
+              }
+          }
+          """)
+
+          print("Fullscreen MainActivity created.")
+          PY
 
       - name: Postavi Java 21
         uses: actions/setup-java@v4
