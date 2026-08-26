@@ -47,19 +47,22 @@ jobs:
       - name: Dodaj Android platformu
         run: npx cap add android
 
-      # ---------------------------------------------------------
+      # =========================================================
       # LOGO
-      # ---------------------------------------------------------
+      # =========================================================
 
       - name: Provjeri logo
         run: |
           test -f src/MA-LOGO.png
+          echo "MA-LOGO.png pronađen"
           file src/MA-LOGO.png
 
       - name: Instaliraj ImageMagick
-        run: sudo apt-get update && sudo apt-get install -y imagemagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
 
-      - name: Generiši Android launcher ikone
+      - name: Generiši launcher ikone
         run: |
           mkdir -p android/app/src/main/res/mipmap-mdpi
           mkdir -p android/app/src/main/res/mipmap-hdpi
@@ -97,26 +100,57 @@ jobs:
           cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
              android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
 
-      - name: Postavi launcher ikonu
+      # =========================================================
+      # ANDROID MANIFEST - SIGURNA IZMJENA
+      # =========================================================
+
+      - name: Postavi launcher ikonu u Manifest
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           text = manifest.read_text()
 
-          text = text.replace(
-              '<application',
-              '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
-              1
-          )
+          # Ako application već ima android:icon, zamijeni ga.
+          if 'android:icon=' in text:
+              text = re.sub(
+                  r'android:icon="[^"]*"',
+                  'android:icon="@mipmap/ic_launcher"',
+                  text,
+                  count=1
+              )
+          else:
+              text = text.replace(
+                  '<application',
+                  '<application android:icon="@mipmap/ic_launcher"',
+                  1
+              )
+
+          # Ako roundIcon postoji, također ga postavi.
+          if 'android:roundIcon=' in text:
+              text = re.sub(
+                  r'android:roundIcon="[^"]*"',
+                  'android:roundIcon="@mipmap/ic_launcher"',
+                  text,
+                  count=1
+              )
+          else:
+              text = text.replace(
+                  'android:icon="@mipmap/ic_launcher"',
+                  'android:icon="@mipmap/ic_launcher" '
+                  'android:roundIcon="@mipmap/ic_launcher"',
+                  1
+              )
 
           manifest.write_text(text)
+          print("AndroidManifest.xml uspješno ažuriran.")
           PY
 
-      # ---------------------------------------------------------
-      # PRAVI IMMERSIVE FULLSCREEN
-      # ---------------------------------------------------------
+      # =========================================================
+      # IMMERSIVE FULLSCREEN
+      # =========================================================
 
       - name: Postavi immersive fullscreen
         run: |
@@ -138,7 +172,6 @@ jobs:
           import android.view.WindowInsets;
           import android.view.WindowInsetsController;
 
-          import com.capacitorjs.plugins.statusbar.StatusBarPlugin;
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
@@ -146,7 +179,6 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-
                   hideSystemUI();
               }
 
@@ -160,9 +192,11 @@ jobs:
               }
 
               private void hideSystemUI() {
+
                   Window window = getWindow();
 
-                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                  if (android.os.Build.VERSION.SDK_INT >=
+                      android.os.Build.VERSION_CODES.R) {
 
                       window.setDecorFitsSystemWindows(false);
 
@@ -197,7 +231,7 @@ jobs:
           }
           """)
 
-          print("True immersive fullscreen configured.")
+          print("Immersive fullscreen configured.")
           PY
 
       - name: Kopiraj web aplikaciju u Android
@@ -211,6 +245,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+
+      # =========================================================
+      # BUILD
+      # =========================================================
 
       - name: Build APK
         working-directory: android
