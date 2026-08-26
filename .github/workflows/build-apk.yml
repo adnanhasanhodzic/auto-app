@@ -23,7 +23,7 @@ jobs:
 
       - name: Instaliraj Capacitor i PDF podršku
         run: |
-          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 @capacitor-community/file-opener@7 html2pdf.js
+          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 html2pdf.js
           npm install --save-dev @capacitor/cli@7
 
       - name: Napravi Capacitor konfiguraciju
@@ -38,18 +38,136 @@ jobs:
           export default config;
           EOF
 
-      - name: Build React aplikacije
-        run: npm run build
-
-      - name: Dodaj Android platformu
-        run: npx cap add android
-
       - name: Provjeri MA-LOGO.png
         run: |
           test -f src/MA-LOGO.png
           echo "MA-LOGO.png pronađen"
           ls -lh src/MA-LOGO.png
-          file src/MA-LOGO.png
+
+      - name: Patch PDF export za Android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/components/ExpensesScreen.tsx')
+          text = p.read_text()
+
+          imports = """import { Capacitor } from '@capacitor/core';
+          import { Filesystem, Directory } from '@capacitor/filesystem';
+          import { Share } from '@capacitor/share';
+          import html2pdf from 'html2pdf.js';
+          import appLogo from '../MA-LOGO.png';
+          """
+          anchor = "import { getDateTimestamp, parseCustomDate } from '../utils/dateUtils';\n"
+          if "from '@capacitor/filesystem'" not in text:
+              text = text.replace(anchor, anchor + imports, 1)
+
+          text = text.replace(
+              'const handlePrintPdf = () => {',
+              'const handlePrintPdf = async () => {',
+              1
+          )
+
+          old_logo = '            <div class=\\"logo-badge\\">🚗</div>'
+          new_logo = '            <div class=\\"logo-badge\\"><img src=\\"${appLogo}\\" style=\\"width:38px;height:38px;object-fit:contain;border-radius:10px;\\" /></div>'
+          if old_logo in text:
+              text = text.replace(old_logo, new_logo, 1)
+
+          start_marker = "    const printWindow = window.open('', '_blank');"
+          end_marker = "    setIsPdfModalOpen(false);\n  };"
+          start = text.find(start_marker)
+          if start == -1:
+              raise RuntimeError('PDF window.open blok nije pronađen.')
+          end = text.find(end_marker, start)
+          if end == -1:
+              raise RuntimeError('Kraj PDF export funkcije nije pronađen.')
+          end += len(end_marker)
+
+          replacement = r'''    try {
+      const pdfElement = document.createElement('div');
+      pdfElement.innerHTML = htmlContent;
+      const bodyElement = pdfElement.querySelector('body') as HTMLElement | null;
+      if (!bodyElement) throw new Error('PDF sadržaj nije moguće pripremiti.');
+
+      bodyElement.style.width = '794px';
+      bodyElement.style.background = '#FFFFFF';
+      bodyElement.style.margin = '0';
+      bodyElement.style.padding = '0';
+      document.body.appendChild(bodyElement);
+
+      try {
+        const filename = `MOJ_AUTO_${car.make}_${car.model}_${pdfYear}.pdf`.replace(/[^a-zA-Z0-9._-]+/g, '_');
+        const worker = html2pdf()
+          .set({
+            margin: [15, 15, 15, 15],
+            filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#FFFFFF' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] },
+          })
+          .from(bodyElement)
+          .toPdf();
+
+        const pdfBlob = await worker.output('blob');
+
+        if (Capacitor.isNativePlatform()) {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = String(reader.result || '');
+              const comma = result.indexOf(',');
+              resolve(comma >= 0 ? result.substring(comma + 1) : result);
+            };
+            reader.onerror = () => reject(reader.error || new Error('Čitanje PDF fajla nije uspjelo.'));
+            reader.readAsDataURL(pdfBlob);
+          });
+
+          const saved = await Filesystem.writeFile({
+            path: filename,
+            data: base64,
+            directory: Directory.Cache,
+            recursive: true,
+          });
+
+          await Share.share({
+            title: 'MOJ AUTO – PDF izvještaj',
+            text: `Izvještaj troškova za ${car.make} ${car.model}`,
+            files: [saved.uri],
+            dialogTitle: 'Otvori PDF pomoću',
+          });
+        } else {
+          const url = URL.createObjectURL(pdfBlob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        setIsPdfModalOpen(false);
+      } finally {
+        bodyElement.remove();
+      }
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('PDF nije moguće otvoriti na ovom telefonu. Izvještaj nije izgubljen.');
+      setIsPdfModalOpen(false);
+    }
+  };'''
+
+          text = text[:start] + replacement + text[end:]
+          p.write_text(text)
+          print('Android PDF export patched: nema window.open/window.print; koristi Filesystem + Share.')
+          PY
+
+      - name: Build React aplikacije
+        run: npm run build
+
+      - name: Dodaj Android platformu
+        run: npx cap add android
 
       - name: Instaliraj ImageMagick
         run: |
