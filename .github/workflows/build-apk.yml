@@ -24,11 +24,83 @@ jobs:
 
       - name: Instaliraj Capacitor i PDF podršku
         run: |
-          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor-community/file-opener@7 html2pdf.js
+          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 @capacitor-community/file-opener@7 html2pdf.js
           npm install --save-dev @capacitor/cli@7
 
       - name: Primijeni PDF export za Android
         run: python3 scripts/patch-pdf-export.py
+
+      - name: Dodaj siguran PDF fallback
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/ExpensesScreen.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          if "from '@capacitor/share'" not in text:
+              text = text.replace(
+                  "import { Capacitor } from '@capacitor/core';",
+                  "import { Capacitor } from '@capacitor/core';\nimport { Share } from '@capacitor/share';",
+                  1
+              )
+
+          old = '''        await FileOpener.open({
+          filePath: uriResult.uri || saved.uri || '',
+          contentType: 'application/pdf',
+          openWithDefault: true,
+        });'''
+
+          new = '''        const localPdfUri = uriResult.uri || saved.uri || '';
+
+        try {
+          await FileOpener.open({
+            filePath: localPdfUri,
+            contentType: 'application/pdf',
+            openWithDefault: false,
+          });
+        } catch (openError) {
+          console.warn('Nema direktnog PDF otvaranja; otvaram Android share/open dijalog.', openError);
+
+          if (!localPdfUri) {
+            throw new Error('Nije moguće dobiti lokalnu URI adresu PDF fajla.');
+          }
+
+          await Share.share({
+            title: 'MOJ AUTO PDF izvještaj',
+            text: `PDF izvještaj troškova za ${car.make} ${car.model}`,
+            url: localPdfUri,
+            dialogTitle: 'Otvori PDF pomoću...',
+          });
+        }'''
+
+          if old not in text:
+              raise RuntimeError('Nije pronađen Android FileOpener blok za PDF.')
+
+          text = text.replace(old, new, 1)
+
+          old_final = '''    } catch (error) {
+      console.error('Greška pri izvozu PDF-a:', error);
+      alert('PDF nije moguće otvoriti. Provjerite da li je na telefonu instalirana aplikacija za PDF dokumente.');
+    } finally {
+      wrapper.remove();
+    }'''
+
+          new_final = '''    } catch (error) {
+      console.error('Greška pri izvozu PDF-a:', error);
+      alert('PDF nije moguće otvoriti ili podijeliti. Pokušajte ponovo.');
+    } finally {
+      wrapper.remove();
+      setIsPdfModalOpen(false);
+    }'''
+
+          if old_final not in text:
+              raise RuntimeError('Nije pronađen PDF catch/finally blok.')
+
+          text = text.replace(old_final, new_final, 1)
+          path.write_text(text, encoding='utf-8')
+          print('Siguran PDF fallback primijenjen.')
+          PY
 
       - name: Napravi Capacitor konfiguraciju
         run: |
@@ -95,27 +167,18 @@ jobs:
 
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
-
           start = text.find('<application')
           if start == -1:
               raise RuntimeError('AndroidManifest.xml nema application element.')
-
           end = text.find('>', start)
           if end == -1:
               raise RuntimeError('application element nije ispravno zatvoren.')
-
           tag = text[start:end + 1]
           tag = re.sub(r'\s+android:icon="[^"]*"', '', tag)
           tag = re.sub(r'\s+android:roundIcon="[^"]*"', '', tag)
-          tag = tag.replace(
-              '<application',
-              '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
-              1
-          )
-
+          tag = tag.replace('<application', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"', 1)
           text = text[:start] + tag + text[end + 1:]
           manifest.write_text(text)
-
           print('MA-LOGO.png -> @mipmap/ic_launcher')
           PY
 
@@ -136,7 +199,6 @@ jobs:
           import android.view.WindowInsets;
           import android.view.WindowInsetsController;
           import android.view.WindowManager;
-
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
@@ -146,17 +208,8 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-
-                  getWindow().setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
-
-                  View decorView = getWindow().getDecorView();
-                  decorView.setOnSystemUiVisibilityChangeListener(visibility -> {
-                      hideSystemBars();
-                  });
-
+                  getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                  getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(visibility -> hideSystemBars());
                   hideSystemBars();
               }
 
@@ -181,32 +234,19 @@ jobs:
 
               private void hideSystemBars() {
                   Window window = getWindow();
-
-                  window.setFlags(
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                      WindowManager.LayoutParams.FLAG_FULLSCREEN
-                  );
-
+                  window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
                   View decorView = window.getDecorView();
 
                   if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                       window.setDecorFitsSystemWindows(false);
-
                       WindowInsetsController controller = window.getInsetsController();
-
                       if (controller != null) {
-                          // Do NOT use BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE.
-                          // That setting allows the Android status bar to appear during swipes.
-                          controller.setSystemBarsBehavior(
-                              WindowInsetsController.BEHAVIOR_DEFAULT
-                          );
+                          controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_DEFAULT);
                           controller.hide(WindowInsets.Type.statusBars());
                           controller.hide(WindowInsets.Type.navigationBars());
                       }
                   }
 
-                  // Keep the legacy immersive flags as well. This is important on
-                  // devices/WebViews where scrolling can otherwise make system bars reappear.
                   decorView.setSystemUiVisibility(
                       View.SYSTEM_UI_FLAG_FULLSCREEN
                           | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -218,11 +258,6 @@ jobs:
               }
           }
           ''')
-
-          print('TRUE IMMERSIVE FULLSCREEN configured.')
-          print('Android status bar: HIDDEN')
-          print('Android navigation bar: HIDDEN')
-          print('Transient swipe reveal: DISABLED')
           PY
 
       - name: Kopiraj web aplikaciju u Android
