@@ -31,13 +31,11 @@ jobs:
         run: |
           cat > capacitor.config.ts <<'EOF'
           import type { CapacitorConfig } from '@capacitor/cli';
-
           const config: CapacitorConfig = {
             appId: 'com.mojauto.app',
             appName: 'MOJ AUTO',
             webDir: 'dist'
           };
-
           export default config;
           EOF
 
@@ -48,7 +46,8 @@ jobs:
         run: npx cap add android
 
       # =========================================================
-      # LOGO - ANDROID LAUNCHER ICON
+      # MA-LOGO.png = IKONA INSTALIRANE APLIKACIJE
+      # Ne mijenja logo niti sliku unutar React GUI-ja.
       # =========================================================
 
       - name: Provjeri MA-LOGO.png
@@ -63,7 +62,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y imagemagick
 
-      - name: Ukloni Capacitor adaptive default ikone
+      - name: Ukloni Capacitor default adaptive ikone
         run: |
           rm -rf android/app/src/main/res/mipmap-anydpi-v26
           rm -rf android/app/src/main/res/mipmap-anydpi
@@ -78,63 +77,39 @@ jobs:
           mkdir -p android/app/src/main/res/mipmap-xxhdpi
           mkdir -p android/app/src/main/res/mipmap-xxxhdpi
 
-          convert src/MA-LOGO.png -resize 48x48 \
-            android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert src/MA-LOGO.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert src/MA-LOGO.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert src/MA-LOGO.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert src/MA-LOGO.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert src/MA-LOGO.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-          convert src/MA-LOGO.png -resize 72x72 \
-            android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-
-          convert src/MA-LOGO.png -resize 96x96 \
-            android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-
-          convert src/MA-LOGO.png -resize 144x144 \
-            android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-
-          convert src/MA-LOGO.png -resize 192x192 \
-            android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-          cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png \
-             android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-
-          cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png \
-             android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-
-          cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png \
-             android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-
-          cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png \
-             android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-
-          cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
-             android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
 
       - name: Postavi MA-LOGO kao launcher ikonu
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
-          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
 
-          match = re.search(r'<application\\b[^>]*>', text, flags=re.DOTALL)
-          if not match:
-              raise RuntimeError("Application tag nije pronađen.")
+          if '<application' not in text:
+              raise RuntimeError('AndroidManifest.xml nema application element.')
 
-          tag = match.group(0)
-          tag = re.sub(r'\\s+android:icon\\s*=\\s*"[^"]*"', '', tag)
-          tag = re.sub(r'\\s+android:roundIcon\\s*=\\s*"[^"]*"', '', tag)
-
-          tag = tag.replace(
+          # Svježi Capacitor manifest se ovdje mijenja jednostavnim literalnim
+          # replaceom. Nema regexa i nema zavisnosti od XML formatiranja.
+          text = text.replace(
               '<application',
               '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"',
               1
           )
 
-          text = text[:match.start()] + tag + text[match.end():]
           manifest.write_text(text)
-
-          print("Launcher ikona = @mipmap/ic_launcher")
+          print('MA-LOGO.png -> @mipmap/ic_launcher')
           PY
 
           grep -n '<application' android/app/src/main/AndroidManifest.xml
@@ -143,28 +118,23 @@ jobs:
       # PRAVI IMMERSIVE FULLSCREEN
       # =========================================================
 
-      - name: Postavi pravi fullscreen - bez status bara i navigacione trake
+      - name: Postavi pravi fullscreen - bez sata, mreže i baterije
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          main_activity = Path(
-              "android/app/src/main/java/com/mojauto/app/MainActivity.java"
-          )
-
+          main_activity = Path('android/app/src/main/java/com/mojauto/app/MainActivity.java')
           main_activity.parent.mkdir(parents=True, exist_ok=True)
 
-          main_activity.write_text("""\
-          package com.mojauto.app;
+          main_activity.write_text(r'''package com.mojauto.app;
 
           import android.os.Bundle;
           import android.os.Handler;
           import android.view.View;
           import android.view.Window;
-          import android.view.WindowManager;
           import android.view.WindowInsets;
           import android.view.WindowInsetsController;
-
+          import android.view.WindowManager;
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
@@ -173,12 +143,10 @@ jobs:
 
               @Override
               public void onCreate(Bundle savedInstanceState) {
-                  // Hide the status bar before the first frame is drawn.
                   getWindow().setFlags(
                       WindowManager.LayoutParams.FLAG_FULLSCREEN,
                       WindowManager.LayoutParams.FLAG_FULLSCREEN
                   );
-
                   super.onCreate(savedInstanceState);
                   hideSystemBars();
               }
@@ -192,24 +160,15 @@ jobs:
               @Override
               public void onWindowFocusChanged(boolean hasFocus) {
                   super.onWindowFocusChanged(hasFocus);
-
                   if (hasFocus) {
                       hideSystemBars();
-
-                      // Capacitor/WebView can regain system-bar control after
-                      // the first frame, so enforce immersive mode again.
-                      fullscreenHandler.postDelayed(
-                          this::hideSystemBars,
-                          250
-                      );
+                      fullscreenHandler.postDelayed(this::hideSystemBars, 250);
                   }
               }
 
               private void hideSystemBars() {
-
                   Window window = getWindow();
 
-                  // Legacy/fullscreen flag for devices below Android 11.
                   window.setFlags(
                       WindowManager.LayoutParams.FLAG_FULLSCREEN,
                       WindowManager.LayoutParams.FLAG_FULLSCREEN
@@ -217,27 +176,18 @@ jobs:
 
                   View decorView = window.getDecorView();
 
-                  if (android.os.Build.VERSION.SDK_INT >=
-                      android.os.Build.VERSION_CODES.R) {
-
+                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                       window.setDecorFitsSystemWindows(false);
 
-                      WindowInsetsController controller =
-                          window.getInsetsController();
+                      WindowInsetsController controller = window.getInsetsController();
 
                       if (controller != null) {
-
                           controller.setSystemBarsBehavior(
-                              WindowInsetsController
-                                  .BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                              WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                           );
-
-                          // Hide BOTH the status bar and navigation bar.
                           controller.hide(WindowInsets.Type.systemBars());
                       }
-
                   } else {
-
                       decorView.setSystemUiVisibility(
                           View.SYSTEM_UI_FLAG_FULLSCREEN
                               | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -249,12 +199,11 @@ jobs:
                   }
               }
           }
-          """)
+          ''')
 
-          print("TRUE IMMERSIVE FULLSCREEN configured.")
-          print("Status bar: HIDDEN")
-          print("Navigation bar: HIDDEN")
-          print("System bars return only temporarily by swipe.")
+          print('TRUE IMMERSIVE FULLSCREEN configured.')
+          print('Status bar: HIDDEN')
+          print('Navigation bar: HIDDEN')
           PY
 
       - name: Kopiraj web aplikaciju u Android
