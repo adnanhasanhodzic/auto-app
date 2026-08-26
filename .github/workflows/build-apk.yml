@@ -9,99 +9,19 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-
     steps:
       - name: Preuzmi kod
         uses: actions/checkout@v4
-
       - name: Postavi Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Instaliraj dependencies
         run: npm install
-
       - name: Instaliraj Capacitor i PDF podršku
         run: |
           npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 @capacitor-community/file-opener@7 html2pdf.js
           npm install --save-dev @capacitor/cli@7
-
-      - name: Primijeni PDF export za Android
-        run: python3 scripts/patch-pdf-export.py
-
-      - name: Dodaj siguran PDF fallback
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('src/components/ExpensesScreen.tsx')
-          text = path.read_text(encoding='utf-8')
-
-          if "from '@capacitor/share'" not in text:
-              text = text.replace(
-                  "import { Capacitor } from '@capacitor/core';",
-                  "import { Capacitor } from '@capacitor/core';\nimport { Share } from '@capacitor/share';",
-                  1
-              )
-
-          old = '''        await FileOpener.open({
-          filePath: uriResult.uri || saved.uri || '',
-          contentType: 'application/pdf',
-          openWithDefault: true,
-        });'''
-
-          new = '''        const localPdfUri = uriResult.uri || saved.uri || '';
-
-        try {
-          await FileOpener.open({
-            filePath: localPdfUri,
-            contentType: 'application/pdf',
-            openWithDefault: false,
-          });
-        } catch (openError) {
-          console.warn('Nema direktnog PDF otvaranja; otvaram Android share/open dijalog.', openError);
-
-          if (!localPdfUri) {
-            throw new Error('Nije moguće dobiti lokalnu URI adresu PDF fajla.');
-          }
-
-          await Share.share({
-            title: 'MOJ AUTO PDF izvještaj',
-            text: `PDF izvještaj troškova za ${car.make} ${car.model}`,
-            url: localPdfUri,
-            dialogTitle: 'Otvori PDF pomoću...',
-          });
-        }'''
-
-          if old not in text:
-              raise RuntimeError('Nije pronađen Android FileOpener blok za PDF.')
-
-          text = text.replace(old, new, 1)
-
-          old_final = '''    } catch (error) {
-      console.error('Greška pri izvozu PDF-a:', error);
-      alert('PDF nije moguće otvoriti. Provjerite da li je na telefonu instalirana aplikacija za PDF dokumente.');
-    } finally {
-      wrapper.remove();
-    }'''
-
-          new_final = '''    } catch (error) {
-      console.error('Greška pri izvozu PDF-a:', error);
-      alert('PDF nije moguće otvoriti ili podijeliti. Pokušajte ponovo.');
-    } finally {
-      wrapper.remove();
-      setIsPdfModalOpen(false);
-    }'''
-
-          if old_final not in text:
-              raise RuntimeError('Nije pronađen PDF catch/finally blok.')
-
-          text = text.replace(old_final, new_final, 1)
-          path.write_text(text, encoding='utf-8')
-          print('Siguran PDF fallback primijenjen.')
-          PY
-
       - name: Napravi Capacitor konfiguraciju
         run: |
           cat > capacitor.config.ts <<'EOF'
@@ -113,87 +33,54 @@ jobs:
           };
           export default config;
           EOF
-
       - name: Build React aplikacije
         run: npm run build
-
       - name: Dodaj Android platformu
         run: npx cap add android
-
       - name: Provjeri MA-LOGO.png
         run: |
           test -f src/MA-LOGO.png
           echo "MA-LOGO.png pronađen"
           ls -lh src/MA-LOGO.png
-          file src/MA-LOGO.png
-
       - name: Instaliraj ImageMagick
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
-
-      - name: Ukloni Capacitor default adaptive ikone
+      - name: Generiši launcher ikone
         run: |
-          rm -rf android/app/src/main/res/mipmap-anydpi-v26
-          rm -rf android/app/src/main/res/mipmap-anydpi
-          rm -rf android/app/src/main/res/mipmap-anydpi-v24
-          rm -rf android/app/src/main/res/mipmap-anydpi-v21
-
-      - name: Generiši launcher ikone iz MA-LOGO.png
-        run: |
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-
+          mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi android/app/src/main/res/mipmap-xxxhdpi
           convert src/MA-LOGO.png -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-          cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-          cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
-
-      - name: Postavi MA-LOGO kao launcher ikonu
+          for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp android/app/src/main/res/mipmap-$d/ic_launcher.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png; done
+      - name: Postavi launcher ikonu
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           manifest = Path('android/app/src/main/AndroidManifest.xml')
           text = manifest.read_text()
           start = text.find('<application')
-          if start == -1:
+          if start < 0:
               raise RuntimeError('AndroidManifest.xml nema application element.')
           end = text.find('>', start)
-          if end == -1:
-              raise RuntimeError('application element nije ispravno zatvoren.')
           tag = text[start:end + 1]
           tag = re.sub(r'\s+android:icon="[^"]*"', '', tag)
           tag = re.sub(r'\s+android:roundIcon="[^"]*"', '', tag)
           tag = tag.replace('<application', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"', 1)
-          text = text[:start] + tag + text[end + 1:]
-          manifest.write_text(text)
-          print('MA-LOGO.png -> @mipmap/ic_launcher')
+          manifest.write_text(text[:start] + tag + text[end + 1:])
           PY
-
-      - name: Postavi PRAVI immersive fullscreen - bez sata mreže baterije
+      - name: Postavi fullscreen
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
-          main_activity = Path('android/app/src/main/java/com/mojauto/app/MainActivity.java')
-          main_activity.parent.mkdir(parents=True, exist_ok=True)
-
-          main_activity.write_text(r'''package com.mojauto.app;
+          p = Path('android/app/src/main/java/com/mojauto/app/MainActivity.java')
+          p.parent.mkdir(parents=True, exist_ok=True)
+          p.write_text('''package com.mojauto.app;
 
           import android.os.Bundle;
-          import android.os.Handler;
           import android.view.View;
           import android.view.Window;
           import android.view.WindowInsets;
@@ -202,80 +89,50 @@ jobs:
           import com.getcapacitor.BridgeActivity;
 
           public class MainActivity extends BridgeActivity {
-
-              private final Handler fullscreenHandler = new Handler();
-
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                  getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(visibility -> hideSystemBars());
                   hideSystemBars();
               }
-
               @Override
               public void onResume() {
                   super.onResume();
                   hideSystemBars();
-                  fullscreenHandler.postDelayed(this::hideSystemBars, 100);
-                  fullscreenHandler.postDelayed(this::hideSystemBars, 500);
-                  fullscreenHandler.postDelayed(this::hideSystemBars, 1000);
               }
-
               @Override
               public void onWindowFocusChanged(boolean hasFocus) {
                   super.onWindowFocusChanged(hasFocus);
-                  if (hasFocus) {
-                      hideSystemBars();
-                      fullscreenHandler.postDelayed(this::hideSystemBars, 100);
-                      fullscreenHandler.postDelayed(this::hideSystemBars, 500);
-                  }
+                  if (hasFocus) hideSystemBars();
               }
-
               private void hideSystemBars() {
                   Window window = getWindow();
                   window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                  View decorView = window.getDecorView();
-
+                  View decor = window.getDecorView();
                   if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                       window.setDecorFitsSystemWindows(false);
-                      WindowInsetsController controller = window.getInsetsController();
-                      if (controller != null) {
-                          controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_DEFAULT);
-                          controller.hide(WindowInsets.Type.statusBars());
-                          controller.hide(WindowInsets.Type.navigationBars());
+                      WindowInsetsController c = window.getInsetsController();
+                      if (c != null) {
+                          c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_DEFAULT);
+                          c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
                       }
                   }
-
-                  decorView.setSystemUiVisibility(
-                      View.SYSTEM_UI_FLAG_FULLSCREEN
-                          | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                          | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                          | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                          | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                          | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                  );
+                  decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
               }
           }
           ''')
           PY
-
       - name: Kopiraj web aplikaciju u Android
         run: npx cap copy android
-
       - name: Sinhronizuj Capacitor
         run: npx cap sync android
-
       - name: Postavi Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Build APK
         working-directory: android
         run: ./gradlew clean assembleDebug
-
       - name: Sačuvaj APK
         uses: actions/upload-artifact@v4
         with:
