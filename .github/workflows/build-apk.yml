@@ -51,10 +51,11 @@ jobs:
       # LOGO
       # =========================================================
 
-      - name: Provjeri logo
+      - name: Provjeri MA-LOGO.png
         run: |
           test -f src/MA-LOGO.png
           echo "MA-LOGO.png pronađen"
+          ls -lh src/MA-LOGO.png
           file src/MA-LOGO.png
 
       - name: Instaliraj ImageMagick
@@ -62,7 +63,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y imagemagick
 
-      - name: Generiši launcher ikone
+      - name: Generiši launcher ikone iz MA-LOGO.png
         run: |
           mkdir -p android/app/src/main/res/mipmap-mdpi
           mkdir -p android/app/src/main/res/mipmap-hdpi
@@ -100,59 +101,61 @@ jobs:
           cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png \
              android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
 
-      # =========================================================
-      # ANDROID MANIFEST - SIGURNA IZMJENA
-      # =========================================================
-
-      - name: Postavi launcher ikonu u Manifest
+      - name: Postavi launcher ikonu
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          manifest = Path(
+              "android/app/src/main/AndroidManifest.xml"
+          )
+
           text = manifest.read_text()
 
-          # Ako application već ima android:icon, zamijeni ga.
-          if 'android:icon=' in text:
-              text = re.sub(
-                  r'android:icon="[^"]*"',
-                  'android:icon="@mipmap/ic_launcher"',
-                  text,
-                  count=1
-              )
-          else:
-              text = text.replace(
-                  '<application',
-                  '<application android:icon="@mipmap/ic_launcher"',
-                  1
-              )
+          match = re.search(
+              r'<application\b[^>]*>',
+              text,
+              flags=re.DOTALL
+          )
 
-          # Ako roundIcon postoji, također ga postavi.
-          if 'android:roundIcon=' in text:
-              text = re.sub(
-                  r'android:roundIcon="[^"]*"',
-                  'android:roundIcon="@mipmap/ic_launcher"',
-                  text,
-                  count=1
-              )
-          else:
-              text = text.replace(
-                  'android:icon="@mipmap/ic_launcher"',
-                  'android:icon="@mipmap/ic_launcher" '
-                  'android:roundIcon="@mipmap/ic_launcher"',
-                  1
-              )
+          if not match:
+              raise RuntimeError("Application tag nije pronađen.")
+
+          tag = match.group(0)
+
+          tag = re.sub(
+              r'\s+android:icon\s*=\s*"[^"]*"',
+              '',
+              tag
+          )
+
+          tag = re.sub(
+              r'\s+android:roundIcon\s*=\s*"[^"]*"',
+              '',
+              tag
+          )
+
+          tag = tag.replace(
+              '<application',
+              '<application '
+              'android:icon="@mipmap/ic_launcher" '
+              'android:roundIcon="@mipmap/ic_launcher"',
+              1
+          )
+
+          text = text[:match.start()] + tag + text[match.end():]
 
           manifest.write_text(text)
-          print("AndroidManifest.xml uspješno ažuriran.")
+
+          print("Launcher ikona postavljena.")
           PY
 
       # =========================================================
-      # IMMERSIVE FULLSCREEN
+      # PRAVI IMMERSIVE FULLSCREEN
       # =========================================================
 
-      - name: Postavi immersive fullscreen
+      - name: Postavi pravi fullscreen
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -161,7 +164,10 @@ jobs:
               "android/app/src/main/java/com/mojauto/app/MainActivity.java"
           )
 
-          main_activity.parent.mkdir(parents=True, exist_ok=True)
+          main_activity.parent.mkdir(
+              parents=True,
+              exist_ok=True
+          )
 
           main_activity.write_text("""\
           package com.mojauto.app;
@@ -179,7 +185,7 @@ jobs:
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
-                  hideSystemUI();
+                  enableFullscreen();
               }
 
               @Override
@@ -187,11 +193,11 @@ jobs:
                   super.onWindowFocusChanged(hasFocus);
 
                   if (hasFocus) {
-                      hideSystemUI();
+                      enableFullscreen();
                   }
               }
 
-              private void hideSystemUI() {
+              private void enableFullscreen() {
 
                   Window window = getWindow();
 
@@ -208,6 +214,7 @@ jobs:
                           controller.hide(
                               WindowInsets.Type.statusBars()
                                   | WindowInsets.Type.navigationBars()
+                                  | WindowInsets.Type.displayCutout()
                           );
 
                           controller.setSystemBarsBehavior(
@@ -234,11 +241,19 @@ jobs:
           print("Immersive fullscreen configured.")
           PY
 
+      # =========================================================
+      # CAPACITOR
+      # =========================================================
+
       - name: Kopiraj web aplikaciju u Android
         run: npx cap copy android
 
       - name: Sinhronizuj Capacitor
         run: npx cap sync android
+
+      # =========================================================
+      # JAVA
+      # =========================================================
 
       - name: Postavi Java 21
         uses: actions/setup-java@v4
@@ -247,12 +262,12 @@ jobs:
           java-version: '21'
 
       # =========================================================
-      # BUILD
+      # BUILD APK
       # =========================================================
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew clean assembleDebug
 
       - name: Sačuvaj APK
         uses: actions/upload-artifact@v4
