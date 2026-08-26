@@ -22,10 +22,13 @@ jobs:
       - name: Instaliraj dependencies
         run: npm install
 
-      - name: Instaliraj Capacitor
+      - name: Instaliraj Capacitor i PDF podršku
         run: |
-          npm install @capacitor/core@7 @capacitor/android@7
+          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor-community/file-opener@7 html2pdf.js
           npm install --save-dev @capacitor/cli@7
+
+      - name: Primijeni PDF export za Android
+        run: python3 scripts/patch-pdf-export.py
 
       - name: Napravi Capacitor konfiguraciju
         run: |
