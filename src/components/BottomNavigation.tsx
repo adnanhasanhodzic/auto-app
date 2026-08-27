@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, History, Wrench } from 'lucide-react';
+import { Home, History, Wrench, PieChart } from 'lucide-react';
 import { NavTab } from '../types';
 
 interface BottomNavigationProps {
@@ -31,6 +31,13 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
       label: 'Održavanje',
       icon: (isActive) => (
         <Wrench className={`w-5 h-5 ${isActive ? 'text-[#1D68F2] stroke-[2.4]' : 'text-slate-400 stroke-[1.9]'}`} />
+      ),
+    },
+    {
+      id: 'troskovi',
+      label: 'Troškovi',
+      icon: (isActive) => (
+        <PieChart className={`w-5 h-5 ${isActive ? 'text-[#1D68F2] stroke-[2.4]' : 'text-slate-400 stroke-[1.9]'}`} />
       ),
     },
   ];
