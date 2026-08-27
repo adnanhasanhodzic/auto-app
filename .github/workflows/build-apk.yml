@@ -42,35 +42,7 @@ EOF
 
       - name: Ukloni PDF iz Troškova i dodaj O aplikaciji
         run: |
-          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnA9UGF0aCgic3JjL2NvbXBvbmVudHMvRXhwZW5zZXNTY3JlZW4udHN4IilcdG4KdD1wLnJlYWRfdGV4dCgpXG50PXQucmVwbGFjZSgiICBGaWxlRG93biwifCIsICIiKS5yZXBsYWNlKCIgIFByaW50ZXIsXG4iLCAiIikucmVwbGFjZSgiICBGaWxlVGV4dCxcbiIsICIiKVxu' | base64 -d > /tmp/update_expenses.py
-          cat >> /tmp/update_expenses.py <<'PY'
-start=t.find("  // PDF Export state")
-end=t.find("  // Services filtered by active vehicle and selected year")
-if start != -1 and end != -1: t=t[:start]+t[end:]
-start=t.find("  // PDF category options for the selected pdfYear")
-end=t.find("  return (", start)
-if start != -1 and end != -1: t=t[:start]+t[end:]
-start=t.find("      {/* FIKSNI DONJI BLOK: IZVOZ U PDF")
-end=t.find("    </div>\\n  );", start)
-if start == -1 or end == -1: raise SystemExit("PDF UI block nije pronađen")
-about='''      {!selectedCategoryDetail && (
-        <div className="flex-shrink-0 z-20 bg-[#F8FAFC] px-5 py-3 border-t border-slate-200/70">
-          <div className="w-full p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center space-x-3">
-            <img src="/MA-LOGO.png" alt="MOJ AUTO" className="w-11 h-11 rounded-xl object-contain flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">O APLIKACIJI</div>
-              <div className="text-[11px] text-slate-500 font-medium mt-0.5 leading-relaxed">MOJ AUTO – jednostavna evidencija vozila, servisa, radova, troškova, goriva, garancija i održavanja.</div>
-              <div className="text-[11px] text-slate-400 font-semibold mt-1">Autor: Adnan Hasanhodzic</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-'''
-t=t[:start]+about+t[end:]
-p.write_text(t)
-print("PDF uklonjen iz Troškova; dodano O aplikaciji.")
-PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnAgPSBQYXRoKCJzcmMvY29tcG9uZW50cy9FeHBlbnNlc1NjcmVlbi50c3giKQp0ID0gcC5yZWFkX3RleHQoKQp0ID0gdC5yZXBsYWNlKCIgIEZpbGVEb3duLFxuIiwgIiIpLnJlcGxhY2UoIiAgUHJpbnRlcixcbiIsICIiKS5yZXBsYWNlKCIgIEZpbGVUZXh0LFxuIiwgIiIpCgppZiAidCA9IiA6IHRoaXMgYWJj' | base64 -d > /tmp/update_expenses.py
           python3 /tmp/update_expenses.py
 
       - name: Build React aplikacije
