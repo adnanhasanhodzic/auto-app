@@ -53,78 +53,13 @@ jobs:
           convert src/MA-LOGO.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp android/app/src/main/res/mipmap-$d/ic_launcher.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png; done
 
-      - name: Postavi AndroidManifest
+      - name: Postavi launcher ikonu u manifestu
         run: |
-          cat > android/app/src/main/AndroidManifest.xml <<'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.INTERNET" />
-    <application
-        android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="MOJ AUTO"
-        android:roundIcon="@mipmap/ic_launcher"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme">
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
-            android:theme="@style/AppTheme">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-    </application>
-</manifest>
-EOF
+          sed -i 's#android:icon="@mipmap/ic_launcher"#android:icon="@mipmap/ic_launcher"#' android/app/src/main/AndroidManifest.xml
 
       - name: Postavi immersive fullscreen
         run: |
-          cat > android/app/src/main/java/com/mojauto/app/MainActivity.java <<'EOF'
-package com.mojauto.app;
-
-import android.os.Bundle;
-import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import com.getcapacitor.BridgeActivity;
-
-public class MainActivity extends BridgeActivity {
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        hideSystemUI();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        hideSystemUI();
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) hideSystemUI();
-    }
-
-    private void hideSystemUI() {
-        Window window = getWindow();
-        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        window.getDecorView().setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_FULLSCREEN
-            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-        );
-    }
-}
-EOF
+          python3 -c "import base64; from pathlib import Path; p=Path('android/app/src/main/java/com/mojauto/app/MainActivity.java'); p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(base64.b64decode('cGFja2FnZSBjb20ubW9qYXV0by5hcHA7CgppbXBvcnQgYW5kcm9pZC5vcy5CdW5kbGU7CmltcG9ydCBhbmRyb2lkLnZpZXcuVmlldzsKaW1wb3J0IGFuZHJvaWQudmlldy5XaW5kb3c7CmltcG9ydCBhbmRyb2lkLnZpZXcuV2luZG93TWFuYWdlcjsKaW1wb3J0IGNvbS5nZXRjYXBhY2l0b3IuQnJpZGdlQWN0aXZpdHk7CgpwdWJsaWMgY2xhc3MgTWFpbkFjdGl2aXR5IGV4dGVuZHMgQnJpZGdlQWN0aXZpdHkgewogICAgQHZlcnJpZGUKICAgIHB1YmxpYyB2b2lkIG9uQ3JlYXRlKEJ1bmRsZSBzYXZlZEluc3RhbmNlU3RhdGUpIHsKICAgICAgICBzdXBlci5vbkNyZWF0ZShzYXZlZEluc3RhbmNlU3RhdGUpOwogICAgICAgIGhpZGVTeXN0ZW1VSTYoKTsKICAgIH0KCiAgICBAdmVycmlkZQogICAgcHVibGljIHZvaWQgb25SZXN1bWUoKSB7CiAgICAgICAgc3VwZXIub25SZXN1bWUoKTsKICAgICAgICBoaWRlU3lzdGVtVUkoKTsKICAgIH0KCiAgICBAdmVycmlkZQogICAgcHVibGljIHZvaWQgb25XaW5kb3dGb2N1c0NoYW5nZWQoYm9vbGVhbiBoYXNGb2N1cykgewogICAgICAgIHN1cGVyLm9uV2luZG93Rm9jdXNDaGFuZ2VkKGhhc0ZvY3VzKTsKICAgICAgICBpZiAoaXNBbGxvd2VkRm9jdXMpIGhpZGVT eXN0ZW1VSSgpOwogICAgfQoKICAgIHByaXZhdGUgdm9pZCBoaWRlU3lzdGVtVUkoKSB7CiAgICAgICAgV2luZG93IHdpbmRvdyA9IGdldFdpbmRvdygpOwogICAgICAgIHdpbmRvdy5zZXRGbGFncyhXaW5kb3dNYW5hZ2VyLkxheW91dFBhcmFtZXRlcnMuRkxBR19GVUxMU0NSRUVOLEZsYWcgV2luZG93TWFuYWdlci5MYXlvdXRQYXJhbWV0ZXJzLkZMQUdfRlVMTFNFUkVFTik7CiAgICAgICAgd2luZG93LmdldERlY29yVmlldygpLnNldFN5c3RlbVVJVmlzaWJpbGl0eSgKICAgICAgICAgICAgVmlldy5TWVNURU1fVUlfRkxBR19GVUxMU0NSRUVOCiAgICAgICAgICAgIHwgVmlldy5TWVNURU1fVUlfRkxBR19ISURFX05BVklHQVRJT04KICAgICAgICAgICAgfCBWaWV3LlNZU1RFTV9VSV9GTEFHX0lNTUVSU0lWRV9TVElDS1kKICAgICAgICAgICAgfCBWaWV3LlNZU1RFTV9VSV9GTEFHX0xBWU9VVF9GVUxMU0NSRUVOCiAgICAgICAgICAgIHwgVmlldy5TWVNURU1fVUlfRkxBR19MQVlPVVRfSElERV9OQVZJR0FUSU9O CiAgICAgICAgICAgIHwgVmlldy5TWVNURU1fVUlfRkxBR19MQVlPVVRfU1RBQkxFCiAgICAgICAgKTsKICAgIH0KfQo='))"
 
       - name: Kopiraj web aplikaciju
         run: npx cap copy android
