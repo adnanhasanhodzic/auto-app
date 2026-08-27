@@ -9,7 +9,6 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-
     steps:
       - name: Preuzmi kod
         uses: actions/checkout@v4
@@ -23,9 +22,10 @@ jobs:
         run: npm install
 
       - name: Instaliraj Capacitor
-        run: |
-          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7
-          npm install --save-dev @capacitor/cli@7
+        run: npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7
+
+      - name: Instaliraj Capacitor CLI
+        run: npm install --save-dev @capacitor/cli@7
 
       - name: Build React aplikacije
         run: npm run build
@@ -37,9 +37,7 @@ jobs:
         run: test -f src/MA-LOGO.png
 
       - name: Instaliraj ImageMagick
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
 
       - name: Generiši launcher ikone
         run: |
@@ -53,65 +51,10 @@ jobs:
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp android/app/src/main/res/mipmap-$d/ic_launcher.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png; done
 
       - name: Postavi launcher ikonu
-        run: |
-          python3 -c "from pathlib import Path; import re; p=Path('android/app/src/main/AndroidManifest.xml'); t=p.read_text(); s=t.find('<application'); e=t.find('>',s); assert s>=0 and e>=0, 'Application tag nije pronadjen'; tag=t[s:e+1]; tag=re.sub(r'\\s+android:(?:round)?icon=\"[^\"]*\"','',tag); tag=tag.replace('<application','<application android:icon=\"@mipmap/ic_launcher\" android:roundIcon=\"@mipmap/ic_launcher\"',1); p.write_text(t[:s]+tag+t[e+1:])"
+        run: python3 -c "from pathlib import Path; import re; p=Path('android/app/src/main/AndroidManifest.xml'); t=p.read_text(); s=t.find('<application'); e=t.find('>',s); assert s>=0 and e>=0; tag=t[s:e+1]; tag=re.sub(r'\\s+android:(?:round)?icon=\"[^\"]*\"','',tag); tag=tag.replace('<application','<application android:icon=\"@mipmap/ic_launcher\" android:roundIcon=\"@mipmap/ic_launcher\"',1); p.write_text(t[:s]+tag+t[e+1:])"
 
       - name: Postavi immersive fullscreen
-        run: |
-          cat > android/app/src/main/java/com/mojauto/app/MainActivity.java <<'EOF'
-          package com.mojauto.app;
-
-          import android.os.Bundle;
-          import android.view.View;
-          import android.view.Window;
-          import android.view.WindowInsets;
-          import android.view.WindowInsetsController;
-          import android.view.WindowManager;
-          import com.getcapacitor.BridgeActivity;
-
-          public class MainActivity extends BridgeActivity {
-              @Override
-              public void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  hideSystemUI();
-              }
-
-              @Override
-              public void onResume() {
-                  super.onResume();
-                  hideSystemUI();
-              }
-
-              @Override
-              public void onWindowFocusChanged(boolean hasFocus) {
-                  super.onWindowFocusChanged(hasFocus);
-                  if (hasFocus) hideSystemUI();
-              }
-
-              private void hideSystemUI() {
-                  Window window = getWindow();
-                  window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                  window.setDecorFitsSystemWindows(false);
-                  View decor = window.getDecorView();
-                  decor.setSystemUiVisibility(
-                      View.SYSTEM_UI_FLAG_FULLSCREEN |
-                      View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-                      View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-                      View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-                      View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-                      View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                  );
-
-                  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                      WindowInsetsController controller = window.getInsetsController();
-                      if (controller != null) {
-                          controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-                          controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                      }
-                  }
-              }
-          }
-          EOF
+        run: echo 'cGFja2FnZSBjb20ubW9qYXV0by5hcHA7Cgp...'
 
       - name: Kopiraj web aplikaciju
         run: npx cap copy android
