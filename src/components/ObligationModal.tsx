@@ -21,20 +21,17 @@ export const ObligationModal: React.FC<ObligationModalProps> = ({
   onSave,
 }) => {
   const [date, setDate] = useState(existingObligation?.date || getTodayFormatted());
-  const [expiryDate, setExpiryDate] = useState(
-    existingObligation?.expiryDate || addYearsToDate(getTodayFormatted(), 1)
-  );
   const [error, setError] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [isExpiryDatePickerOpen, setIsExpiryDatePickerOpen] = useState(false);
+
+  // Datum isteka je uvijek automatski: početak registracije + 1 godina.
+  const expiryDate = date ? addYearsToDate(date, 1) : '';
 
   useEffect(() => {
     if (isOpen) {
       setDate(existingObligation?.date || getTodayFormatted());
-      setExpiryDate(
-        existingObligation?.expiryDate || addYearsToDate(getTodayFormatted(), 1)
-      );
       setError(null);
+      setIsDatePickerOpen(false);
     }
   }, [isOpen, existingObligation]);
 
@@ -42,8 +39,9 @@ export const ObligationModal: React.FC<ObligationModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expiryDate.trim()) {
-      setError('Molimo unesite datum isteka registracije.');
+
+    if (!date.trim()) {
+      setError('Molimo unesite datum početka registracije.');
       return;
     }
 
@@ -52,8 +50,8 @@ export const ObligationModal: React.FC<ObligationModalProps> = ({
       carId,
       type: 'registracija',
       title: 'Registracija vozila',
-      date: date.trim() || getTodayFormatted(),
-      expiryDate: expiryDate.trim(),
+      date: date.trim(),
+      expiryDate,
     });
     onClose();
   };
@@ -92,10 +90,10 @@ export const ObligationModal: React.FC<ObligationModalProps> = ({
               </div>
             )}
 
-            {/* Datum unosa / važenja */}
+            {/* Jedino polje koje korisnik unosi: početak registracije */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Datum unosa / važenja
+                Datum unosa / početak registracije
               </label>
               <div
                 className="relative cursor-pointer"
@@ -123,38 +121,24 @@ export const ObligationModal: React.FC<ObligationModalProps> = ({
               </div>
             </div>
 
-            {/* Datum isteka registracije */}
+            {/* Datum isteka - automatski izračunat i zaključan */}
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Datum isteka registracije <span className="text-red-500">*</span>
+                Datum isteka registracije
               </label>
-              <div
-                className="relative cursor-pointer"
-                onClick={() => setIsExpiryDatePickerOpen(true)}
-              >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpiryDatePickerOpen(true);
-                  }}
-                  className="w-8 h-8 absolute left-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 hover:text-[#1D68F2] transition-colors cursor-pointer"
-                  title="Otvori kalendar"
-                >
-                  <Calendar className="w-4 h-4" />
-                </button>
+              <div className="relative">
+                <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  required
+                  readOnly
+                  tabIndex={-1}
                   value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
-                  onClick={() => setIsExpiryDatePickerOpen(true)}
-                  placeholder="dd.mm.gggg."
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1D68F2] cursor-pointer"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-default focus:outline-none"
+                  aria-readonly="true"
                 />
               </div>
               <p className="text-[11px] text-slate-400 font-medium mt-1">
-                Format: dd.mm.gggg.
+                Automatski: 1 godina od početka registracije.
               </p>
             </div>
 
@@ -177,21 +161,12 @@ export const ObligationModal: React.FC<ObligationModalProps> = ({
           </form>
         </motion.div>
 
-        {/* Date Pickers */}
         <DatePickerModal
           isOpen={isDatePickerOpen}
           value={date}
-          title="Datum unosa / važenja"
+          title="Datum unosa / početak registracije"
           onClose={() => setIsDatePickerOpen(false)}
           onSelect={(newDate) => setDate(newDate)}
-        />
-
-        <DatePickerModal
-          isOpen={isExpiryDatePickerOpen}
-          value={expiryDate}
-          title="Datum isteka registracije"
-          onClose={() => setIsExpiryDatePickerOpen(false)}
-          onSelect={(newDate) => setExpiryDate(newDate)}
         />
       </div>
     </AnimatePresence>
