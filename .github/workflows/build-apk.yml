@@ -9,6 +9,7 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+
     steps:
       - name: Preuzmi kod
         uses: actions/checkout@v4
@@ -21,38 +22,19 @@ jobs:
       - name: Instaliraj dependencies
         run: npm install
 
-      - name: Instaliraj Capacitor i PDF podršku
+      - name: Instaliraj Capacitor
         run: |
-          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7 html2pdf.js
+          npm install @capacitor/core@7 @capacitor/android@7 @capacitor/filesystem@7 @capacitor/share@7
           npm install --save-dev @capacitor/cli@7
 
-      - name: Napravi Capacitor konfiguraciju
-        run: |
-          cat > capacitor.config.ts <<'EOF'
-          import type { CapacitorConfig } from '@capacitor/cli';
-          const config: CapacitorConfig = {
-            appId: 'com.mojauto.app',
-            appName: 'MOJ AUTO',
-            webDir: 'dist'
-          };
-          export default config;
-          EOF
-
-      - name: Provjeri logo
-        run: test -f src/MA-LOGO.png
+      - name: Build React aplikacije
+        run: npm run build
 
       - name: Dodaj Android platformu
         run: npx cap add android
 
-      - name: Dodaj html2pdf deklaraciju
-        run: printf '%s\n' "declare module 'html2pdf.js';" > src/html2pdf.d.ts
-
-      - name: Popravi PDF export
-        run: |
-          echo 'CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAoKcCA9IFBhdGgoInNyYy9jb21wb25lbnRzL0V4cGVuc2VzU2NyZWVuLnRzeCIpCnRleHQgPSBwLnJlYWRfdGV4dCgpCgppbXBvcnRzID0gImltcG9ydCB7IGdldERhdGVUaW1lc3RhbXAsIHBhcnNlQ3VzdG9tRGF0ZSB9IGZyb20gJy4uL3V0aWxzL2RhdGVVdGlscyc7IgpuZXdfaW1wb3J0cyA9ICIiImltcG9ydCB7IGdldERhdGVUaW1lc3RhbXAsIHBhcnNlQ3VzdG9tRGF0ZSB9IGZyb20gJy4uL3V0aWxzL2RhdGVVdGlscyc7CmltcG9ydCB7IENhcGFjaXRvciB9IGZyb20gJ0BjYXBhY2l0b3IvY29yZSc7CmltcG9ydCB7IEZpbGVzeXN0ZW0sIERpcmVjdG9yeSB9IGZyb20gJ0BjYXBhY2l0b3IvZmlsZXN5c3RlbSc7CmltcG9ydCB7IFNoYXJlIH0gZnJvbSAnQGNhcGFjaXRvci9zaGFyZSc7CmltcG9ydCBodG1sMnBkZiBmcm9tICdodG1sMnBkZi5qcyc7CmltcG9ydCBhcHBMb2dvIGZyb20gJy4uL01BLUxPR08ucG5nJzsiIiIKaWYgIkBjYXBhY2l0b3IvZmlsZXN5c3RlbSIgbm90IGluIHRleHQ6CiAgICBpZiBpbXBvcnRzIG5vdCBpbiB0ZXh0OgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoIkltcG9ydCBhbmNob3IgbmlqZSBwcm9uYcSRZW4uIikKICAgIHRleHQgPSB0ZXh0LnJlcGxhY2UoaW1wb3J0cywgbmV3X2ltcG9ydHMsIDEpCgp0ZXh0ID0gdGV4dC5yZXBsYWNlKCJjb25zdCBoYW5kbGVQcmludFBkZiA9ICgpID0+IHsiLCAiY29uc3QgaGFuZGxlUHJpbnRQZGYgPSBhc3luYyAoKSA9PiB7IiwgMSkKCm9sZCA9ICJjb25zdCBwcmludFdpbmRvdyA9IHdpbmRvdy5vcGVuKCcnLCAnX2JsYW5rJyk7IgpzdGFydCA9IHRleHQuZmluZChvbGQpCmlmIHN0YXJ0IDwgMDoKICAgIHJhaXNlIFN5c3RlbUV4aXQoIlBERiB3aW5kb3cub3BlbiBuaWplIHByb25hxJFlbi4iKQoKZW5kX21hcmtlciA9ICJzZXRJc1BkZk1vZGFsT3BlbihmYWxzZSk7XG4gIH07IgplbmQgPSB0ZXh0LmZpbmQoZW5kX21hcmtlciwgc3RhcnQpCmlmIGVuZCA8IDA6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCJLcmFqIFBERiBmdW5rY2lqZSBuaWplIHByb25hxJFlbi4iKQplbmQgKz0gbGVuKGVuZF9tYXJrZXIpCgpyZXBsYWNlbWVudCA9ICIiInRyeSB7CiAgICBjb25zdCBjb250YWluZXIgPSBkb2N1bWVudC5jcmVhdGVFbGVtZW50KCdkaXYnKTsKICAgIGNvbnRhaW5lci5pbm5lckhUTUwgPSBodG1sQ29udGVudDsKICAgIGNvbnN0IHBkZkJvZHkgPSBjb250YWluZXIucXVlcnlTZWxlY3RvcignYm9keScpOwogICAgaWYgKCFwZGZCb2R5KSB0aHJvdyBuZXcgRXJyb3IoJ1BERiBzYWRyxb5haiBuaWplIG1vZ3XEh2UgcHJpcHJlbWl0aS4nKTsKICAgIHBkZkJvZHkuc3R5bGUud2lkdGggPSAnNzk0cHgnOwogICAgcGRmQm9keS5zdHlsZS5iYWNrZ3JvdW5kID0gJyNGRkZGRkYnOwogICAgcGRmQm9keS5zdHlsZS5tYXJnaW4gPSAnMCc7CiAgICBwZGZCb2R5LnN0eWxlLnBhZGRpbmcgPSAnMCc7CiAgICBkb2N1bWVudC5ib2R5LmFwcGVuZENoaWxkKHBkZkJvZHkpOwogICAgdHJ5IHsKICAgICAgY29uc3QgZmlsZW5hbWUgPSBgTU9KX0FVVE9fJHtjYXIubWFrZX1fJHtjYXIubW9kZWx9XyR7cGRmWWVhcn0ucGRmYC5yZXBsYWNlKC9bXmEtekEtWjAtOS5fLV0rL2csICdfJyk7CiAgICAgIGNvbnN0IHBkZkJsb2IgPSBhd2FpdCBodG1sMnBkZigpLnNldCh7IG1hcmdpbjogWzE1LDE1LDE1LDE1XSwgZmlsZW5hbWUsIGltYWdlOiB7IHR5cGU6ICdqcGVnJywgcXVhbGl0eTogMC45OCB9LCBodG1sMmNhbnZhczoge3NjYWxlOjIsIHVzZUNPUlM6dHJ1ZSxiYWNrZ3JvdW5kQ29sb3I6JyNGRkZGRkYnfSwganNQREY6e3VuaXQ6J21tJyxmb3JtYXQ6J2E0JyxvcmllbnRhdGlvbjoncG9ydHJhaXQnfX0pLmZyb20ocGRmQm9keSkub3V0cHV0UGRmKCdibG9iJyk7CiAgICAgIGlmIChDYXBhY2l0b3IuaXNOYXRpdmVQbGF0Zm9ybSgpKSB7CiAgICAgICAgY29uc3QgYmFzZTY0ID0gYXdhaXQgbmV3IFByb21pc2U8c3RyaW5nPigoZXNvbHZlLHJlamVjdCkgPT4ge2NvbnN0IHJlYWRlciA9IG5ldyBGaWxlUmVhZGVyKCk7cmVhZGVyLm9ubG9hZGVuZCA9ICgpID0+e2NvbnN0IHJlc3VsdCA9IFN0cmluZyhyZWFkZXIucmVzdWx0IHx8ICcnKTtjb25zdCBjb21tYSA9IHJlc3VsdC5pbmRleE9mKCcsJyk7cmVzb2x2ZShjb21tYT49MCA/IHJlc3VsdC5zdWJzdHJpbmcoY29tbWEgKyAxKSA6IHJlc3VsdCl9O3JlYWRlci5vbmVycm9yID0gKCkgPT4gcmVqZWN0KHJlYWRlci5lcnJvciB8fCBuZXcgRXJyb3IoJ1BERiBjaXRhbmplIG5pamUgdXNwamVsby4nKSk7cmVhZGVyLnJlYWRBc0RhdGFTVVIo cGRmQmxvYik7fSk7CiAgICAgICAgY29uc3Qgc2F2ZWQgPSBhd2FpdCBGaWxlc3lzdGVtLndyaXRlRmlsZSh7cGF0aDpmaWxlbmFtZSxkYXRhOmJhc2U2NCxkaXJlY3Rvcnk6RGlyZWN0b3J5LkNhY2hlLHJlY3Vyc2l2ZTp0cnVlfSk7CiAgICAgICAgYXdhaXQgU2hhcmUuc2hhcmUoe3RpdGxlOicNT0ogQVVUTyDigJMgUERGIGl6dmplxaF0YWonLHRleHQ6YE96dmplxaF0YWogdHJvc2tvdmEgemEgJHtjYXIubWFrZX0gJHtjYXIubW9kZWx9YCxmaWxlczpbc2F2ZWQudXJpXSxkaWFsb2dUaXRsZTonT3R2b3JpIFBERiBwb21vxaF1J30pOwp9IGVsc2Uge2NvbnN0IHVybCA9IFVSTC5jcmVhdGVPYmplY3RVUkwo cGRmQmxvYik7Y29uc3QgbGluayA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ2EnKTtsaW5rLmhyZWY9dXJsO2xpbmsuZG93bmxvYWQ9ZmlsZW5hbWU7ZG9jdW1lbnQuYm9keS5hcHBlbmRDaGlsZChsaW5rKTtsaW5rLmNsaWNrKCk7bGluay5yZW1vdmUoKTtzZXRUaW1lb3V0KCkgPT4gVVJMLnJldm9rZU9iamVjdFVSTCh1cmwpLDEwMDApO30KICAgICAgc2V0SXNQZGZNb2RhbE9wZW4oZmFsc2UpO2ZpbmFsbHkge3BkZkJvZHkucmVtb3ZlKCk7fX0gY2F0Y2goZXJyb3Ipe2NvbnNvbGUuZXJyb3IoJ1BERiBleHBvcnQgZmFpbGVkOicsZXJyb3IpO2FsZXJ0KCdQREYgbmlqZSBtb2d1Y2Ugb3R2b3JpdGkgbmEgb3ZvbSB0ZWxlZm9udS4nKTtzZXRJc1BkZk1vZGFsT3BlbihmYWxzZSk7fX0gIH07IiIiCnRleHQgPSB0ZXh0WzpzdGFydF0gKyByZXBsYWNlbWVudCArIHRleHRbZW5kOl0KdGV4dCA9IHRleHQucmVwbGFjZSgnPGRpdiBjbGFzcz0ibG9nby1iYWRnZSI+8J+YqDwvZGl2PicsICc8ZGl2IGNsYXNzPSJsb2dvLWJhZGdlIj48aW1nIHNyYz0iJHthcHBMb2dvfSIgYWx0PSJNT0ogQVVUTyIgc3R5bGU9IndpZHRoOjM4cHg7aGVpZ2h0OjM4cHg7b2JqZWN0LWZpdDpjb250YWluO2JvcmRlci1yYWRpdXM6MTBweDsiIC8+PC9kaXY+JywKICAgIDEpCnAud3JpdGVfdGV4dCh0ZXh0KQ==' | base64 --decode | python3
-
-      - name: Build React aplikacije
-        run: npm run build
+      - name: Provjeri logo
+        run: test -f src/MA-LOGO.png
 
       - name: Instaliraj ImageMagick
         run: |
@@ -72,29 +54,13 @@ jobs:
 
       - name: Postavi launcher ikonu
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path('android/app/src/main/AndroidManifest.xml')
-          text = p.read_text()
-          start = text.find('<application')
-          end = text.find('>', start)
-          if start < 0 or end < 0:
-              raise RuntimeError('Application tag nije pronađen.')
-          tag = text[start:end + 1]
-          tag = re.sub(r'\s+android:icon="[^"]*"', '', tag)
-          tag = re.sub(r'\s+android:roundIcon="[^"]*"', '', tag)
-          tag = tag.replace('<application', '<application android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"', 1)
-          p.write_text(text[:start] + tag + text[end + 1:])
-          PY
+          python3 -c "from pathlib import Path; import re; p=Path('android/app/src/main/AndroidManifest.xml'); t=p.read_text(); s=t.find('<application'); e=t.find('>',s); assert s>=0 and e>=0, 'Application tag nije pronadjen'; tag=t[s:e+1]; tag=re.sub(r'\\s+android:(?:round)?icon=\"[^\"]*\"','',tag); tag=tag.replace('<application','<application android:icon=\"@mipmap/ic_launcher\" android:roundIcon=\"@mipmap/ic_launcher\"',1); p.write_text(t[:s]+tag+t[e+1:])"
 
-      - name: Postavi fullscreen
+      - name: Postavi immersive fullscreen
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('android/app/src/main/java/com/mojauto/app/MainActivity.java')
-          p.parent.mkdir(parents=True, exist_ok=True)
-          p.write_text('''package com.mojauto.app;
+          cat > android/app/src/main/java/com/mojauto/app/MainActivity.java <<'EOF'
+          package com.mojauto.app;
+
           import android.os.Bundle;
           import android.view.View;
           import android.view.Window;
@@ -102,24 +68,50 @@ jobs:
           import android.view.WindowInsetsController;
           import android.view.WindowManager;
           import com.getcapacitor.BridgeActivity;
+
           public class MainActivity extends BridgeActivity {
-              @Override public void onCreate(Bundle savedInstanceState) { super.onCreate(savedInstanceState); hideSystemUI(); }
-              @Override public void onResume() { super.onResume(); hideSystemUI(); }
-              @Override public void onWindowFocusChanged(boolean hasFocus) { super.onWindowFocusChanged(hasFocus); if (hasFocus) hideSystemUI(); }
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  hideSystemUI();
+              }
+
+              @Override
+              public void onResume() {
+                  super.onResume();
+                  hideSystemUI();
+              }
+
+              @Override
+              public void onWindowFocusChanged(boolean hasFocus) {
+                  super.onWindowFocusChanged(hasFocus);
+                  if (hasFocus) hideSystemUI();
+              }
+
               private void hideSystemUI() {
-                  Window w = getWindow();
-                  w.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-                  w.setDecorFitsSystemWindows(false);
-                  View d = w.getDecorView();
-                  d.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+                  Window window = getWindow();
+                  window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                  window.setDecorFitsSystemWindows(false);
+                  View decor = window.getDecorView();
+                  decor.setSystemUiVisibility(
+                      View.SYSTEM_UI_FLAG_FULLSCREEN |
+                      View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                      View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                      View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                      View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                      View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                  );
+
                   if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                      WindowInsetsController c = w.getInsetsController();
-                      if (c != null) { c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE); c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars()); }
+                      WindowInsetsController controller = window.getInsetsController();
+                      if (controller != null) {
+                          controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                          controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                      }
                   }
               }
           }
-          ''')
-          PY
+          EOF
 
       - name: Kopiraj web aplikaciju
         run: npx cap copy android
