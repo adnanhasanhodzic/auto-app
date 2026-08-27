@@ -32,14 +32,24 @@ jobs:
           arrow = '''            <div className="w-8 h-8 rounded-xl bg-blue-50/70 text-[#1D68F2] flex items-center justify-center group-hover:bg-[#1D68F2] group-hover:text-white transition-colors">\n              <ChevronRight className="w-4 h-4 stroke-[2.5]" />\n            </div>\n'''
           t = t.replace(arrow, '')
           p.write_text(t)
+
+          # Na dugmetu "Dodaj stavku" zadržavamo samo jedan vidljivi plus.
+          # Uklanjamo lucide Plus ikonu i ostavljamo literalni + ispred teksta.
+          sp = Path('src/components/service/ServiceEntryFormView.tsx')
+          s = sp.read_text()
+          old = '''              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />\n              <span>Dodaj stavku</span>'''
+          new = '''              <span>+ Dodaj stavku</span>'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          sp.write_text(s)
           PY
           grep -q 'O APLIKACIJI' src/components/ExpensesScreen.tsx
           test "$(grep -o 'Autor: Adnan Hasanhodžić' src/components/ExpensesScreen.tsx | wc -l)" -eq 1
           if grep -q 'IZVOZ U PDF' src/components/ExpensesScreen.tsx; then echo 'PDF UI nije uklonjen'; exit 1; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/components/ExpensesScreen.tsx
-          git diff --cached --quiet || git commit -m 'Ensure single app author line [skip ci]'
+          git add src/components/ExpensesScreen.tsx src/components/service/ServiceEntryFormView.tsx
+          git diff --cached --quiet || git commit -m 'Fix Add item plus icon [skip ci]'
           git push
 
       - name: Postavi Node.js
