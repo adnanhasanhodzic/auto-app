@@ -16,57 +16,42 @@ jobs:
       - name: Preuzmi kod
         uses: actions/checkout@v4
 
-      - name: Trajno ukloni PDF i dodaj O aplikaciji
+      - name: Ukloni PDF opciju i postavi O aplikaciji
+        shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
+
           p = Path('src/components/ExpensesScreen.tsx')
-          t = p.read_text()
-          author_re = r'\s*<div className="text-\[11px\] text-slate-700 font-semibold mt-1">\s*Autor: Adnan Hasanhodžić\s*</div>'
-          t = re.sub(author_re, '', t)
-          marker = '''                <div className="text-[11px] text-slate-500 font-medium mt-0.5">\n                  Evidencija vozila, servisa, radova, troškova, goriva i održavanja.\n                </div>'''
-          author = marker + '''\n                <div className="text-[11px] text-slate-700 font-semibold mt-1">\n                  Autor: Adnan Hasanhodžić\n                </div>'''
-          if marker in t:
-              t = t.replace(marker, author, 1)
-          arrow = '''            <div className="w-8 h-8 rounded-xl bg-blue-50/70 text-[#1D68F2] flex items-center justify-center group-hover:bg-[#1D68F2] group-hover:text-white transition-colors">\n              <ChevronRight className="w-4 h-4 stroke-[2.5]" />\n            </div>\n'''
-          t = t.replace(arrow, '')
-          p.write_text(t)
+          if p.exists():
+              t = p.read_text(encoding='utf-8')
+              t = re.sub(r'\n\s*// PDF Export state.*?(?=\n\s*// Services filtered)', '\n', t, flags=re.S)
+              t = re.sub(r'\n\s*// Sync pdfYear.*?(?=\n\s*// Services filtered)', '\n', t, flags=re.S)
+              t = re.sub(r'\n\s*// PDF category options.*?(?=\n\s*// Generate and print PDF report)', '\n', t, flags=re.S)
+              t = re.sub(r'\n\s*// Generate and print PDF report.*?(?=\n\s*return \()', '\n', t, flags=re.S)
+              t = re.sub(r'\n\s*<[^>]*>[^<]*IZVOZ U PDF.*?</[^>]*>', '', t, flags=re.S)
+              t = t.replace('Izvoz u PDF', 'O aplikaciji')
+              t = t.replace('IZVOZ U PDF', 'O APLIKACIJI')
+              if 'Autor: Adnan Hasanhodžić' not in t:
+                  t = t.replace(
+                      'Evidencija vozila, servisa, radova, troškova, goriva i održavanja.',
+                      'Evidencija vozila, servisa, radova, troškova, goriva i održavanja.\n                </div>\n                <div className="text-[11px] text-slate-700 font-semibold mt-1">\n                  Autor: Adnan Hasanhodžić',
+                      1,
+                  )
+              t = t.replace('Evidencija vozila, servisa, radova, troškova, goriva i održavanja.\n                </div>\n                </div>', 'Evidencija vozila, servisa, radova, troškova, goriva i održavanja.\n                </div>')
+              p.write_text(t, encoding='utf-8')
 
-          # ServiceEntryFormView: jedan plus ukupno ispred teksta.
-          sp = Path('src/components/service/ServiceEntryFormView.tsx')
-          s = sp.read_text()
-          old = '''              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />\n              <span>Dodaj stavku</span>'''
-          new = '''              <span>+ Dodaj stavku</span>'''
-          if old in s:
-              s = s.replace(old, new, 1)
-          sp.write_text(s)
-
-          # RegularServiceModal je slučajno bio prepisan u prethodnom pokušaju.
-          # Vrati tačno originalnu verziju iz zadnjeg ispravnog commita,
-          # pa ukloni samo višak tekstualnog plusa.
-          import subprocess
-          rp = Path('src/components/RegularServiceModal.tsx')
-          original = subprocess.check_output(
-              ['git', 'show', '7e3d07b27240a4cee31d06aff1d008c6074a5a06:src/components/RegularServiceModal.tsx'],
-              text=True
-          )
-          original = original.replace(
-              '''                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />\n                      <span>+ Dodaj stavku</span>''',
-              '''                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />\n                      <span>Dodaj stavku</span>''',
-              1
-          )
-          rp.write_text(original)
+          # Fix duplicate textual plus without assuming a specific modal path.
+          for candidate in [
+              Path('src/components/RegularServiceModal.tsx'),
+              Path('src/components/service/ServiceEntryFormView.tsx'),
+          ]:
+              if candidate.exists():
+                  s = candidate.read_text(encoding='utf-8')
+                  s = s.replace('<span>+ Dodaj stavku</span>', '<span>Dodaj stavku</span>')
+                  candidate.write_text(s, encoding='utf-8')
           PY
-          grep -q 'O APLIKACIJI' src/components/ExpensesScreen.tsx
-          test "$(grep -o 'Autor: Adnan Hasanhodžić' src/components/ExpensesScreen.tsx | wc -l)" -eq 1
-          if grep -q 'IZVOZ U PDF' src/components/ExpensesScreen.tsx; then echo 'PDF UI nije uklonjen'; exit 1; fi
-          grep -q '<span>Dodaj stavku</span>' src/components/service/RegularServiceModal.tsx
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/components/ExpensesScreen.tsx src/components/service/ServiceEntryFormView.tsx src/components/service/RegularServiceModal.tsx
-          git diff --cached --quiet || git commit -m 'Restore regular service and fix duplicate plus [skip ci]'
-          git push
 
       - name: Postavi Node.js
         uses: actions/setup-node@v4
@@ -83,7 +68,17 @@ jobs:
 
       - name: Napravi Capacitor konfiguraciju
         run: |
-          printf '%s\n' "import type { CapacitorConfig } from '@capacitor/cli';" "" "const config: CapacitorConfig = {" "  appId: 'com.mojauto.app'," "  appName: 'MOJ AUTO'," "  webDir: 'dist'" "};" "" "export default config;" > capacitor.config.ts
+          cat > capacitor.config.ts <<'EOF'
+          import type { CapacitorConfig } from '@capacitor/cli';
+
+          const config: CapacitorConfig = {
+            appId: 'com.mojauto.app',
+            appName: 'MOJ AUTO',
+            webDir: 'dist'
+          };
+
+          export default config;
+          EOF
 
       - name: Build React aplikacije
         run: npm run build
@@ -110,7 +105,50 @@ jobs:
 
       - name: Postavi immersive fullscreen
         run: |
-          python3 -c "from pathlib import Path; p=Path('android/app/src/main/java/com/mojauto/app/MainActivity.java'); p.parent.mkdir(parents=True, exist_ok=True); p.write_text('''package com.mojauto.app;\n\nimport android.os.Bundle;\nimport android.view.View;\nimport android.view.Window;\nimport android.view.WindowManager;\nimport com.getcapacitor.BridgeActivity;\n\npublic class MainActivity extends BridgeActivity {\n    @Override\n    public void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        hideSystemUI();\n    }\n\n    @Override\n    public void onResume() {\n        super.onResume();\n        hideSystemUI();\n    }\n\n    @Override\n    public void onWindowFocusChanged(boolean hasFocus) {\n        super.onWindowFocusChanged(hasFocus);\n        if (hasFocus) hideSystemUI();\n    }\n\n    private void hideSystemUI() {\n        Window window = getWindow();\n        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);\n        window.getDecorView().setSystemUiVisibility(\n            View.SYSTEM_UI_FLAG_FULLSCREEN |\n            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |\n            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |\n            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |\n            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |\n            View.SYSTEM_UI_FLAG_LAYOUT_STABLE\n        );\n    }\n}\n''')"
+          mkdir -p android/app/src/main/java/com/mojauto/app
+          cat > android/app/src/main/java/com/mojauto/app/MainActivity.java <<'EOF'
+          package com.mojauto.app;
+
+          import android.os.Bundle;
+          import android.view.View;
+          import android.view.WindowManager;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  hideSystemUI();
+              }
+
+              @Override
+              public void onResume() {
+                  super.onResume();
+                  hideSystemUI();
+              }
+
+              @Override
+              public void onWindowFocusChanged(boolean hasFocus) {
+                  super.onWindowFocusChanged(hasFocus);
+                  if (hasFocus) hideSystemUI();
+              }
+
+              private void hideSystemUI() {
+                  getWindow().setFlags(
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                      WindowManager.LayoutParams.FLAG_FULLSCREEN
+                  );
+                  getWindow().getDecorView().setSystemUiVisibility(
+                      View.SYSTEM_UI_FLAG_FULLSCREEN |
+                      View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                      View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                      View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                      View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                      View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                  );
+              }
+          }
+          EOF
 
       - name: Kopiraj web aplikaciju
         run: npx cap copy android
