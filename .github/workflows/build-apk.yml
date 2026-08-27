@@ -28,22 +28,7 @@ jobs:
 
       - name: Napravi Capacitor konfiguraciju
         run: |
-          cat > capacitor.config.ts <<'EOF'
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  appId: 'com.mojauto.app',
-  appName: 'MOJ AUTO',
-  webDir: 'dist'
-};
-
-export default config;
-EOF
-
-      - name: Ukloni PDF iz Troškova i dodaj O aplikaciji
-        run: |
-          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnAgPSBQYXRoKCJzcmMvY29tcG9uZW50cy9FeHBlbnNlc1NjcmVlbi50c3giKQp0ID0gcC5yZWFkX3RleHQoKQp0ID0gdC5yZXBsYWNlKCIgIEZpbGVEb3duLFxuIiwgIiIpLnJlcGxhY2UoIiAgUHJpbnRlcixcbiIsICIiKS5yZXBsYWNlKCIgIEZpbGVUZXh0LFxuIiwgIiIpCgppZiAidCA9IiA6IHRoaXMgYWJj' | base64 -d > /tmp/update_expenses.py
-          python3 /tmp/update_expenses.py
+          printf '%s\n' "import type { CapacitorConfig } from '@capacitor/cli';" "" "const config: CapacitorConfig = {" "  appId: 'com.mojauto.app'," "  appName: 'MOJ AUTO'," "  webDir: 'dist'" "};" "" "export default config;" > capacitor.config.ts
 
       - name: Build React aplikacije
         run: npm run build
@@ -123,16 +108,13 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
-            hideSystemUI();
-        }
+        if (hasFocus) hideSystemUI();
     }
 
     private void hideSystemUI() {
         Window window = getWindow();
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        View decorView = window.getDecorView();
-        decorView.setSystemUiVisibility(
+        window.getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN
             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
