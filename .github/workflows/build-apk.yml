@@ -31,13 +31,11 @@ jobs:
         run: |
           cat > capacitor.config.ts <<'EOF'
           import type { CapacitorConfig } from '@capacitor/cli';
-
           const config: CapacitorConfig = {
             appId: 'com.mojauto.app',
             appName: 'MOJ AUTO',
             webDir: 'dist'
           };
-
           export default config;
           EOF
 
@@ -64,7 +62,7 @@ jobs:
           convert src/MA-LOGO.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp android/app/src/main/res/mipmap-$d/ic_launcher.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png; done
 
-      - name: Postavi ispravan AndroidManifest
+      - name: Postavi AndroidManifest
         run: |
           cat > android/app/src/main/AndroidManifest.xml <<'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -93,7 +91,52 @@ jobs:
           EOF
 
       - name: Postavi immersive fullscreen
-        run: echo 'cGFja2FnZSBjb20ubW9qYXV0by5hcHA7CgppbXBvcnQgYW5kcm9pZC5vcy5CdW5kbGU7CmltcG9ydCBhbmRyb2lkLnZpZXcuVmlldzsKaW1wb3J0IGFuZHJvaWQudmVldy5XaW5kb3c7CmltcG9ydCBhbmRyb2lkLnZpZXcuV2luZG93SW5zZXRzOwppbXBvcnQgYW5kcm9pZC52aWV3LldpbmRvd0luc2V0c0NvbnRyb2xsZXI7CmltcG9ydCBhbmRyb2lkLnZpZXcuV2luZG93TWFuYWdlcjsKaW1wb3J0IGNvbS5nZXRjYXBhY2l0b3IuQnJpZGdlQWN0aXZpdHk7CgpwdWJsaWMgY2xhc3MgTWFpbkFjdGl2aXR5IGV4dGVuZHMgQnJpZGdlQWN0aXZpdHkgewogICAgQE92ZXJyaWRlIHB1YmxpYyB2b2lkIG9uQ3JlYXRlKEJ1bmRsZSBzYXZlZEluc3RhbmNlU3RhdGUpIHsKICAgICAgICBzdXBlci5vbkNyZWF0ZShzYXZlZEluc3RhbmNlU3RhdGUpOwogICAgICAgIGhpZGVTeXN0ZW1VSSgpOwogICAgfQogICAgQE92ZXJyaWRlIHB1YmxpYyB2b2lkIG9uUmVzdW1lKCkgewogICAgICAgIHN1cGVyLm9uUmVzdW1lKCk7CiAgICAgICAgaGlkZVN5c3RlbVVJKCk7CiAgICB9CiAgICBA T3ZlcnJpZGUgcHVibGljIHZvaWQgb25XaW5kb3dGb2N1c0NoYW5nZWQoYm9vbGVhbiBoYXNGb2N1cykgewogICAgICAgIHN1cGVyLm9uV2luZG93Rm9jdXNDaGFuZ2VkKGhhc0ZvY3VzKTsKICAgICAgICBpZiAoaGFzRm9jdXMpIGhpZGVTeXN0ZW1VSSgpOwogICAgfQogICAgcHJpdmF0ZSB2b2lkIGhpZGVTeXN0ZW1VSSgpIHsKICAgICAgICBXaW5kb3cgd2luZG93ID0gZ2V0V2luZG93KCk7CiAgICAgICAgd2luZG93LnNldEZsYWdzKFdpbmRvd01hbmFnZXIuTGF5b3V0UGFyYW1zLkZMQUdfRlVMTFNDUkVFTiwgV2luZG93TWFuYWdlci5MYXlvdXREb2VwQ29udGVudHMgfCBXaW5kb3dNYW5hZ2VyLkxheW91dFBhcmFtcy5GTEFBR19GVUxMU0NSRUVOIHwgV2luZG93TWFuYWdlci5MYXlvdXRQYXJhbXMuRkxBR19GVUxMU0NSRUVOX0FQUERFQ1JPUkE7CiAgICAgICAgV2luZG93IGRlY29yID0gd2luZG93LmdldERlY29yVmlldygpOwogICAgICAgIGRlY29yLnNldFN5c3RlbVVJVmlzaWJpbGl0eShWaWV3LlNZU1RFTV9VSV9GTEFXX0ZVTExTQ1JFRU4gfCBWaWV3LlNZU1RFTV9VSV9GTEFXX0hJREVOQVZJR0FUSU9OIHwgVmlldy5TWVNURU1fVUlfRkxBR19JTU1FUlNJVkVfU1RJQ0tZIHwgVmlldy5TWVNURU1fVUlfRkxBR19MQVlPVVRfRlVMTE5TQ1JFRUVOIHwgVmlldy5TWVNURU1fVUlfRkxBR19MQVlPVVRfSElERV9OQVZJR0FUSU9OIHwgVmlldy5TWVNURU1fVUlfRkxBR19MQVlPVVRfU1RBQkxFKTsKICAgICAgICBpZiAoYW5kcm9pZC5vcy5CdWlsZC5WRVJTSU9OLlNES19JTlQgPj0gYW5kcm9pZC5vcy5CdWlsZC5WRVJTSU9OX0NPREVTX1IgKSB7CiAgICAgICAgICAgIFdpbmRvd0luc2V0c0NvbnRyb2xsZXIgY29udHJvbGxlciA9IHdpbmRvdy5nZXRJbnNldHNDb250cm9sbGVyKCk7CiAgICAgICAgICAgIGlmIChjb250cm9sbGVyICE9IG51bGwpIHsKICAgICAgICAgICAgICAgIGNvbnRyb2xsZXIuc2V0U3lzdGVtQmFyc0JlaGF2aW9yKFdJbmRvd0luc2V0c0NvbnRyb2xsZXIuQkVIQVZJT1JfU0hPV19UUkFOU0lFTl9CQVJTX0JZX1NXSVBFKTsKICAgICAgICAgICAgICAgIGNvbnRyb2xsZXIuaGlkZShXaW5kb3dJbnNldHMuVHlwZS5zdGF0dXNCYXJzKCkgfCBXaW5kb3dJbnNldHMuVHlwZS5uYXZpZ2F0aW9uQmFycygpKTsKICAgICAgICAgICAgfQogICAgICAgIH0KICAgIH0KfQo=' | base64 --decode > android/app/src/main/java/com/mojauto/app/MainActivity.java
+        run: |
+          cat > android/app/src/main/java/com/mojauto/app/MainActivity.java <<'EOF'
+          package com.mojauto.app;
+
+          import android.os.Bundle;
+          import android.view.View;
+          import android.view.Window;
+          import android.view.WindowManager;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  hideSystemUI();
+              }
+
+              @Override
+              public void onResume() {
+                  super.onResume();
+                  hideSystemUI();
+              }
+
+              @Override
+              public void onWindowFocusChanged(boolean hasFocus) {
+                  super.onWindowFocusChanged(hasFocus);
+                  if (hasFocus) {
+                      hideSystemUI();
+                  }
+              }
+
+              private void hideSystemUI() {
+                  Window window = getWindow();
+                  window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                  View decorView = window.getDecorView();
+                  decorView.setSystemUiVisibility(
+                      View.SYSTEM_UI_FLAG_FULLSCREEN
+                      | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                      | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                      | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                      | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                      | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                  );
+              }
+          }
+          EOF
 
       - name: Kopiraj web aplikaciju
         run: npx cap copy android
