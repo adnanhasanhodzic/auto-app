@@ -24,7 +24,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     existingObligation?.date || getTodayFormatted()
   );
   const [expiryDate, setExpiryDate] = useState(
-    existingObligation?.expiryDate || addYearsToDate(existingObligation?.date || getTodayFormatted(), 1)
+    addYearsToDate(existingObligation?.date || getTodayFormatted(), 1)
   );
   const [error, setError] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -43,7 +43,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
   const handleEntryDateSelect = (newDate: string) => {
     setEntryDate(newDate);
-    // Registration is valid exactly one year from the entry date.
     setExpiryDate(addYearsToDate(newDate, 1));
     setIsDatePickerOpen(false);
   };
@@ -51,17 +50,18 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!entryDate.trim()) {
-      setError('Molimo unesite datum unosa registracije.');
+      setError('Molimo unesite datum početka registracije.');
       return;
     }
 
+    const normalizedEntryDate = entryDate.trim();
     onSave({
       id: existingObligation?.id || 'ob_reg_' + Date.now(),
       carId,
       type: 'registracija',
       title: 'Registracija vozila',
-      date: entryDate.trim(),
-      expiryDate: addYearsToDate(entryDate.trim(), 1),
+      date: normalizedEntryDate,
+      expiryDate: addYearsToDate(normalizedEntryDate, 1),
     });
     onClose();
   };
@@ -101,7 +101,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                DATUM UNOSA / VAŽENJA
+                DATUM UNOSA / POČETAK REGISTRACIJE
               </label>
               <div
                 className="relative cursor-pointer"
@@ -131,7 +131,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                DATUM ISTEKA REGISTRACIJE <span className="text-red-500">*</span>
+                DATUM ISTEKA REGISTRACIJE
               </label>
               <div className="relative">
                 <div className="w-8 h-8 absolute left-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
@@ -139,14 +139,15 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 </div>
                 <input
                   type="text"
-                  required
                   value={expiryDate}
                   readOnly
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none"
+                  tabIndex={-1}
+                  aria-readonly="true"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:outline-none cursor-default"
                 />
               </div>
               <p className="text-[11px] text-slate-400 font-medium mt-1">
-                Registracija važi 1 godinu od datuma unosa.
+                Automatski: 1 godina od početka registracije.
               </p>
             </div>
 
@@ -171,7 +172,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         <DatePickerModal
           isOpen={isDatePickerOpen}
           value={entryDate}
-          title="Datum unosa / važenja"
+          title="Datum početka registracije"
           onClose={() => setIsDatePickerOpen(false)}
           onSelect={handleEntryDateSelect}
         />
