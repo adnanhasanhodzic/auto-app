@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar, Car } from 'lucide-react';
 import { VehicleObligation } from '../types';
@@ -20,18 +20,38 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const [entryDate, setEntryDate] = useState(
+    existingObligation?.date || getTodayFormatted()
+  );
   const [expiryDate, setExpiryDate] = useState(
-    existingObligation?.expiryDate || addYearsToDate(getTodayFormatted(), 1)
+    existingObligation?.expiryDate || addYearsToDate(existingObligation?.date || getTodayFormatted(), 1)
   );
   const [error, setError] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      const initialDate = existingObligation?.date || getTodayFormatted();
+      setEntryDate(initialDate);
+      setExpiryDate(addYearsToDate(initialDate, 1));
+      setError(null);
+      setIsDatePickerOpen(false);
+    }
+  }, [isOpen, existingObligation]);
+
   if (!isOpen) return null;
+
+  const handleEntryDateSelect = (newDate: string) => {
+    setEntryDate(newDate);
+    // Registration is valid exactly one year from the entry date.
+    setExpiryDate(addYearsToDate(newDate, 1));
+    setIsDatePickerOpen(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expiryDate.trim()) {
-      setError('Molimo unesite datum isteka registracije.');
+    if (!entryDate.trim()) {
+      setError('Molimo unesite datum unosa registracije.');
       return;
     }
 
@@ -40,8 +60,8 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
       carId,
       type: 'registracija',
       title: 'Registracija vozila',
-      date: existingObligation?.date || getTodayFormatted(),
-      expiryDate: expiryDate.trim(),
+      date: entryDate.trim(),
+      expiryDate: addYearsToDate(entryDate.trim(), 1),
     });
     onClose();
   };
@@ -81,7 +101,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                DATUM ISTEKA REGISTRACIJE <span className="text-red-500">*</span>
+                DATUM UNOSA / VAŽENJA
               </label>
               <div
                 className="relative cursor-pointer"
@@ -101,15 +121,32 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 <input
                   type="text"
                   required
-                  value={expiryDate}
-                  onChange={(e) => setExpiryDate(e.target.value)}
+                  value={entryDate}
+                  readOnly
                   onClick={() => setIsDatePickerOpen(true)}
-                  placeholder="29.01.2027."
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1D68F2] cursor-pointer"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                DATUM ISTEKA REGISTRACIJE <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="w-8 h-8 absolute left-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={expiryDate}
+                  readOnly
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none"
+                />
+              </div>
               <p className="text-[11px] text-slate-400 font-medium mt-1">
-                Format: dd.mm.gggg.
+                Registracija važi 1 godinu od datuma unosa.
               </p>
             </div>
 
@@ -133,10 +170,10 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
         <DatePickerModal
           isOpen={isDatePickerOpen}
-          value={expiryDate}
-          title="Datum isteka registracije"
+          value={entryDate}
+          title="Datum unosa / važenja"
           onClose={() => setIsDatePickerOpen(false)}
-          onSelect={(newDate) => setExpiryDate(newDate)}
+          onSelect={handleEntryDateSelect}
         />
       </div>
     </AnimatePresence>
