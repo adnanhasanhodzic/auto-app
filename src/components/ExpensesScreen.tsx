@@ -753,9 +753,6 @@ export const ExpensesScreen: React.FC<ExpensesScreenProps> = ({
                 <div className="text-[11px] text-slate-700 font-semibold mt-1">
                   Autor: Adnan Hasanhodžić
                 </div>
-                <div className="text-[11px] text-slate-700 font-semibold mt-1">
-                  Autor: Adnan Hasanhodžić
-                </div>
               </div>
             </div>
           </motion.button>
