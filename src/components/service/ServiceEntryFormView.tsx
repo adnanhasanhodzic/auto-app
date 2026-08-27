@@ -402,8 +402,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
               onClick={() => setIsAddingItem(true)}
               className="w-full py-2 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-[#1D68F2] hover:bg-blue-50/50 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Dodaj stavku</span>
+              <span>+ Dodaj stavku</span>
             </button>
           )}
         </div>
