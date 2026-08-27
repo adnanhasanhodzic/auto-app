@@ -731,24 +731,27 @@ export const ExpensesScreen: React.FC<ExpensesScreenProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* FIKSNI DONJI BLOK: IZVOZ U PDF (Uvijek fiksno na dnu, izvan skrola) */}
+      {/* FIKSNI DONJI BLOK: O APLIKACIJI (Uvijek fiksno na dnu, izvan skrola) */}
       {!selectedCategoryDetail && (
         <div className="flex-shrink-0 z-20 bg-[#F8FAFC] px-5 py-3 border-t border-slate-200/70">
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={() => setIsPdfModalOpen(true)}
+            onClick={() => {}}
             className="w-full p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-[#1D68F2]/60 hover:shadow-xs transition-all cursor-pointer flex items-center justify-between group"
           >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1D68F2] flex items-center justify-center flex-shrink-0 group-hover:bg-[#1D68F2] group-hover:text-white transition-colors">
-                <FileDown className="w-5 h-5 stroke-[2.2]" />
+                <FileText className="w-5 h-5 stroke-[2.2]" />
               </div>
               <div className="text-left">
                 <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  IZVOZ U PDF
+                  O APLIKACIJI
                 </div>
                 <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                  Preuzmite ili odštampajte finansijski izvještaj
+                  Evidencija vozila, servisa, radova, troškova, goriva i održavanja.
+                </div>
+                <div className="text-[11px] text-slate-700 font-semibold mt-1">
+                  Autor: Adnan Hasanhodžić
                 </div>
               </div>
             </div>
