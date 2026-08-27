@@ -33,7 +33,7 @@ jobs:
           t = t.replace(arrow, '')
           p.write_text(t)
 
-          # Servisna forma: samo jedan plus ispred "Dodaj stavku".
+          # ServiceEntryFormView: jedan plus ukupno ispred teksta.
           sp = Path('src/components/service/ServiceEntryFormView.tsx')
           s = sp.read_text()
           old = '''              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />\n              <span>Dodaj stavku</span>'''
@@ -41,14 +41,31 @@ jobs:
           if old in s:
               s = s.replace(old, new, 1)
           sp.write_text(s)
+
+          # RegularServiceModal je slučajno bio prepisan u prethodnom pokušaju.
+          # Vrati tačno originalnu verziju iz zadnjeg ispravnog commita,
+          # pa ukloni samo višak tekstualnog plusa.
+          import subprocess
+          rp = Path('src/components/RegularServiceModal.tsx')
+          original = subprocess.check_output(
+              ['git', 'show', '7e3d07b27240a4cee31d06aff1d008c6074a5a06:src/components/RegularServiceModal.tsx'],
+              text=True
+          )
+          original = original.replace(
+              '''                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />\n                      <span>+ Dodaj stavku</span>''',
+              '''                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />\n                      <span>Dodaj stavku</span>''',
+              1
+          )
+          rp.write_text(original)
           PY
           grep -q 'O APLIKACIJI' src/components/ExpensesScreen.tsx
           test "$(grep -o 'Autor: Adnan Hasanhodžić' src/components/ExpensesScreen.tsx | wc -l)" -eq 1
           if grep -q 'IZVOZ U PDF' src/components/ExpensesScreen.tsx; then echo 'PDF UI nije uklonjen'; exit 1; fi
+          grep -q '<span>Dodaj stavku</span>' src/components/service/RegularServiceModal.tsx
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/components/ExpensesScreen.tsx src/components/service/ServiceEntryFormView.tsx
-          git diff --cached --quiet || git commit -m 'Fix duplicate add item plus [skip ci]'
+          git add src/components/ExpensesScreen.tsx src/components/service/ServiceEntryFormView.tsx src/components/service/RegularServiceModal.tsx
+          git diff --cached --quiet || git commit -m 'Restore regular service and fix duplicate plus [skip ci]'
           git push
 
       - name: Postavi Node.js
