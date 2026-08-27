@@ -753,10 +753,10 @@ export const ExpensesScreen: React.FC<ExpensesScreenProps> = ({
                 <div className="text-[11px] text-slate-700 font-semibold mt-1">
                   Autor: Adnan Hasanhodžić
                 </div>
+                <div className="text-[11px] text-slate-700 font-semibold mt-1">
+                  Autor: Adnan Hasanhodžić
+                </div>
               </div>
-            </div>
-            <div className="w-8 h-8 rounded-xl bg-blue-50/70 text-[#1D68F2] flex items-center justify-center group-hover:bg-[#1D68F2] group-hover:text-white transition-colors">
-              <ChevronRight className="w-4 h-4 stroke-[2.5]" />
             </div>
           </motion.button>
         </div>
