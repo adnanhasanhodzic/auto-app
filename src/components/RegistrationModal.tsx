@@ -23,9 +23,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const [entryDate, setEntryDate] = useState(
     existingObligation?.date || getTodayFormatted()
   );
-  const [expiryDate, setExpiryDate] = useState(
-    addYearsToDate(existingObligation?.date || getTodayFormatted(), 1)
-  );
   const [error, setError] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
@@ -33,7 +30,6 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     if (isOpen) {
       const initialDate = existingObligation?.date || getTodayFormatted();
       setEntryDate(initialDate);
-      setExpiryDate(addYearsToDate(initialDate, 1));
       setError(null);
       setIsDatePickerOpen(false);
     }
@@ -41,9 +37,12 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Datum isteka je ISKLJUČIVO izveden iz početka registracije.
+  // Ne postoji zaseban state niti korisnički unos za datum isteka.
+  const expiryDate = addYearsToDate(entryDate, 1);
+
   const handleEntryDateSelect = (newDate: string) => {
     setEntryDate(newDate);
-    setExpiryDate(addYearsToDate(newDate, 1));
     setIsDatePickerOpen(false);
   };
 
@@ -55,13 +54,15 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     }
 
     const normalizedEntryDate = entryDate.trim();
+    const normalizedExpiryDate = addYearsToDate(normalizedEntryDate, 1);
+
     onSave({
       id: existingObligation?.id || 'ob_reg_' + Date.now(),
       carId,
       type: 'registracija',
       title: 'Registracija vozila',
       date: normalizedEntryDate,
-      expiryDate: addYearsToDate(normalizedEntryDate, 1),
+      expiryDate: normalizedExpiryDate,
     });
     onClose();
   };
@@ -141,9 +142,10 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   type="text"
                   value={expiryDate}
                   readOnly
+                  disabled
                   tabIndex={-1}
                   aria-readonly="true"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:outline-none cursor-default"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 cursor-not-allowed"
                 />
               </div>
               <p className="text-[11px] text-slate-400 font-medium mt-1">
