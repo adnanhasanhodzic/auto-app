@@ -18,6 +18,7 @@ interface AddServiceFlowModalProps {
 }
 
 type FlowStep = 'category' | 'subgroup' | 'entry' | 'fuel' | 'success';
+type AddItemsStep = 'category' | 'subgroup';
 
 export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   isOpen,
@@ -34,6 +35,11 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   const [primaryTitle, setPrimaryTitle] = useState<string>(existingRecord?.title || '');
   const [selectedGroup, setSelectedGroup] = useState<string>(existingRecord?.subGroup || '');
   const [savedRecord, setSavedRecord] = useState<ServiceRecord | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>(
+    existingRecord?.category ? [existingRecord.category as ServiceCategory] : []
+  );
+  const [isAddingMoreItems, setIsAddingMoreItems] = useState(false);
+  const [addItemsStep, setAddItemsStep] = useState<AddItemsStep>('category');
 
   // Fuel form state
   const [fuelDate, setFuelDate] = useState<string>(formatDateCustom(new Date()));
@@ -51,14 +57,20 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
         setSelectedItems(existingRecord.items || [existingRecord.title]);
         setPrimaryTitle(existingRecord.title);
         setSelectedGroup(existingRecord.subGroup || '');
+        setSelectedCategories(existingRecord.category ? [existingRecord.category as ServiceCategory] : []);
         setSavedRecord(null);
+        setIsAddingMoreItems(false);
+        setAddItemsStep('category');
       } else {
         setStep('category');
         setSelectedCategory(null);
         setSelectedItems([]);
         setPrimaryTitle('');
         setSelectedGroup('');
+        setSelectedCategories([]);
         setSavedRecord(null);
+        setIsAddingMoreItems(false);
+        setAddItemsStep('category');
         setFuelDate(formatDateCustom(new Date()));
         setFuelMileage(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');
         setFuelCost('');
@@ -69,9 +81,20 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
 
   if (!isOpen) return null;
 
+  const rememberSelectedCategory = (cat: ServiceCategory) => {
+    setSelectedCategories((current) =>
+      current.includes(cat) ? current : [...current, cat]
+    );
+  };
+
   const handleCategorySelect = (cat: ServiceCategory) => {
     setSelectedCategory(cat);
     setStep('subgroup');
+  };
+
+  const handleAddCategorySelect = (cat: ServiceCategory) => {
+    setSelectedCategory(cat);
+    setAddItemsStep('subgroup');
   };
 
   const handleSelectFuel = () => {
@@ -87,6 +110,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
       setSelectedItems(selectedItems.filter((i) => i !== item));
     } else {
       setSelectedItems([...selectedItems, item]);
+      if (selectedCategory) rememberSelectedCategory(selectedCategory);
     }
   };
 
@@ -94,12 +118,30 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
     setSelectedItems((currentItems) =>
       currentItems.includes(item) ? currentItems : [...currentItems, item]
     );
+    if (selectedCategory) rememberSelectedCategory(selectedCategory);
+
+    if (isAddingMoreItems) {
+      setIsAddingMoreItems(false);
+      setAddItemsStep('category');
+      return;
+    }
+
     setPrimaryTitle(item);
     setSelectedGroup(groupName);
     setStep('entry');
   };
 
   const handleProceedWithItems = (title: string, groupName: string) => {
+    if (selectedCategory && selectedItems.length > 0) {
+      rememberSelectedCategory(selectedCategory);
+    }
+
+    if (isAddingMoreItems) {
+      setIsAddingMoreItems(false);
+      setAddItemsStep('category');
+      return;
+    }
+
     setPrimaryTitle(title);
     setSelectedGroup(groupName);
     setStep('entry');
@@ -154,6 +196,12 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   };
 
   const categoryDef = CATEGORY_CARDS.find((c) => c.id === selectedCategory);
+  const isMultiCategory =
+    existingRecord?.categoryName === 'Više kategorija' || selectedCategories.length > 1;
+  const displayCategoryName = isMultiCategory
+    ? 'Više kategorija'
+    : categoryDef?.name || existingRecord?.categoryName || 'Rad';
+  const displayGroup = isMultiCategory ? '' : selectedGroup;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs select-none">
@@ -188,7 +236,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
               className="flex-1 flex flex-col justify-between w-full h-full bg-white px-5 py-4 overflow-y-auto no-scrollbar"
             >
               <div>
-                {/* Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
                   <button
                     onClick={() => setStep('category')}
@@ -207,7 +254,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                   </button>
                 </div>
 
-                {/* Subtitle with Vehicle Fuel Type */}
                 <div className="pt-4 pb-3 flex items-center space-x-3">
                   <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
                     <Fuel className="w-6 h-6 stroke-[2.2]" />
@@ -229,7 +275,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                     </div>
                   )}
 
-                  {/* DATUM */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       DATUM
@@ -260,7 +305,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                     </div>
                   </div>
 
-                  {/* KILOMETRAŽA */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       KILOMETRAŽA
@@ -288,7 +332,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                     </div>
                   </div>
 
-                  {/* IZNOS */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       IZNOS
@@ -309,7 +352,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                 </form>
               </div>
 
-              {/* Bottom SAČUVAJ button */}
               <div className="pt-6 pb-2">
                 <button
                   type="submit"
@@ -356,12 +398,16 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
               <ServiceEntryFormView
                 car={car}
                 category={selectedCategory}
-                categoryName={categoryDef?.name || existingRecord?.categoryName || 'Rad'}
+                categoryName={displayCategoryName}
                 initialTitle={primaryTitle}
-                initialGroup={selectedGroup}
+                initialGroup={displayGroup}
                 initialItems={selectedItems}
                 existingRecord={existingRecord}
                 onSave={handleSaveRecord}
+                onAddItems={() => {
+                  setAddItemsStep('category');
+                  setIsAddingMoreItems(true);
+                }}
                 onBack={() => {
                   if (existingRecord) {
                     onClose();
@@ -402,7 +448,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                   </p>
                 </div>
 
-                {/* Summary Box */}
                 <div className="w-full bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2 mt-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500 font-medium">Kategorija:</span>
@@ -427,7 +472,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                 </div>
               </div>
 
-              {/* Action Button */}
               <div className="pt-4">
                 <button
                   type="button"
@@ -438,6 +482,36 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {isAddingMoreItems && step === 'entry' && (
+            <motion.div
+              key="add-more-items-overlay"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 z-30 bg-white flex flex-col"
+            >
+              {addItemsStep === 'category' ? (
+                <CategorySelectView
+                  onSelectCategory={handleAddCategorySelect}
+                  onSelectFuel={() => {}}
+                  onBack={() => setIsAddingMoreItems(false)}
+                />
+              ) : selectedCategory ? (
+                <SubGroupSelectView
+                  category={selectedCategory}
+                  selectedItems={selectedItems}
+                  onToggleItem={handleToggleItem}
+                  onSelectSingleItemAndProceed={handleSingleItemAndProceed}
+                  onProceedWithItems={handleProceedWithItems}
+                  onBack={() => setAddItemsStep('category')}
+                />
+              ) : null}
             </motion.div>
           )}
         </AnimatePresence>
