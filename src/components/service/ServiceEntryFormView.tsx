@@ -36,6 +36,7 @@ interface ServiceEntryFormViewProps {
   existingRecord?: ServiceRecord | null;
   onSave: (record: ServiceRecord) => void;
   onBack: () => void;
+  onAddItems?: () => void;
 }
 
 export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
@@ -48,6 +49,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   existingRecord,
   onSave,
   onBack,
+  onAddItems,
 }) => {
   const isMali =
     initialTitle?.trim().toLowerCase() === 'mali servis' ||
@@ -82,6 +84,12 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   const [items, setItems] = useState<string[]>(initialItemsList);
   const [newItemText, setNewItemText] = useState('');
   const [isAddingItem, setIsAddingItem] = useState(false);
+
+  React.useEffect(() => {
+    if (!existingRecord) {
+      setItems(initialItems.length > 0 ? initialItems : [initialTitle].filter(Boolean));
+    }
+  }, [initialItems, initialTitle, existingRecord]);
 
   const [cost, setCost] = useState<string>(
     existingRecord?.cost !== undefined && existingRecord.cost !== null
@@ -370,41 +378,13 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
             ))}
           </div>
 
-          {/* Add item button / input */}
-          {isAddingItem ? (
-            <div className="flex space-x-2 pt-1">
-              <input
-                type="text"
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                placeholder="Unesite stavku rada..."
-                className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1D68F2]"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={handleAddNewItem}
-                className="px-3 py-2 bg-[#1D68F2] text-white text-xs font-bold rounded-xl cursor-pointer"
-              >
-                Dodaj
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddingItem(false)}
-                className="px-2.5 py-2 bg-slate-100 text-slate-600 text-xs font-medium rounded-xl cursor-pointer"
-              >
-                Otkaži
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsAddingItem(true)}
-              className="w-full py-2 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-[#1D68F2] hover:bg-blue-50/50 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
-            >
-              <span>+ Dodaj stavku</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onAddItems || onBack}
+            className="w-full py-2 border border-dashed border-slate-300 rounded-xl text-xs font-bold text-[#1D68F2] hover:bg-blue-50/50 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+          >
+            <span>+ Dodaj stavku</span>
+          </button>
         </div>
 
         {/* 3. TROŠAK & NAPOMENA */}
