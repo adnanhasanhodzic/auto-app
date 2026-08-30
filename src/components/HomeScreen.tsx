@@ -61,7 +61,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     );
   }, [obligations]);
 
-  // Sort recent services by actual date value descending (newest first), maximum 5 items
+  // Sort recent services by actual date value descending (newest first), maximum 7 items
   const sortedRecentServices = useMemo(() => {
     return [...recentServices]
       .sort((a, b) => {
@@ -69,7 +69,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         const timeB = getDateTimestamp(b.date, b.createdAt);
         return timeB - timeA;
       })
-      .slice(0, 5);
+      .slice(0, 7);
   }, [recentServices]);
 
   // Compute single closest upcoming service item under <= 30 days (excluding registration, mali servis, veliki servis)
@@ -237,9 +237,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <span className="tracking-wide">DODAJ RAD / SERVIS</span>
       </motion.button>
 
-      {/* 4. POSLJEDNJI RADOVI (Maksimalno 3, sortirano najnoviji -> najstariji) */}
+      {/* 4. POSLJEDNJI RADOVI */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-2xs space-y-1.5 flex-shrink-0">
-        {/* Card Header */}
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold text-slate-900 tracking-wider uppercase">
             POSLJEDNJI RADOVI
@@ -255,12 +254,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           )}
         </div>
 
-        {/* List of Recent Services */}
         {sortedRecentServices.length > 0 ? (
           <div className="divide-y divide-slate-100">
             {sortedRecentServices.map((record) => {
               const style = getCategoryStyle(record.category);
-
               return (
                 <div
                   key={record.id}
@@ -268,26 +265,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   className="py-1.5 first:pt-0.5 last:pb-0 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
                 >
                   <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                    <div
-                      className={`w-7.5 h-7.5 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}
-                    >
-                      <CategoryIcon
-                        type={record.category}
-                        color={style.color}
-                        className="w-4 h-4"
-                      />
+                    <div className={`w-7.5 h-7.5 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}>
+                      <CategoryIcon type={record.category} color={style.color} className="w-4 h-4" />
                     </div>
-
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-900 truncate">
-                        {record.title}
-                      </div>
+                      <div className="text-xs font-bold text-slate-900 truncate">{record.title}</div>
                       <div className="text-[10px] font-medium text-slate-500 truncate">
                         {record.date} • {formatKm(record.mileage)} km
                       </div>
                     </div>
                   </div>
-
                   <div className="flex items-center space-x-1.5 flex-shrink-0">
                     <span className="text-xs font-bold text-slate-800 bg-slate-100/90 px-2 py-0.5 rounded-lg">
                       {record.cost} {record.currency || 'KM'}
@@ -300,70 +287,39 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         ) : (
           <div className="py-2 text-center">
-            <p className="text-xs text-slate-500 font-medium">
-              Još nema evidentiranih radova.
-            </p>
+            <p className="text-xs text-slate-500 font-medium">Još nema evidentiranih radova.</p>
           </div>
         )}
       </div>
 
-      {/* 5. PRESTOJEĆI SERVISI (UVIJEK VIDLJIVO - MAKSIMALNO 1 NAJBLIŽA STAVKA ILI PORUKA) */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-2xs space-y-1.5 flex-shrink-0">
-        {/* Card Header (Informational, bez "Prikaži sve") */}
+      {/* 5. PRESTOJEĆI SERVISI */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-2xs space-y-1.5 flex-shrink-0 mt-auto">
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold text-slate-900 tracking-wider uppercase">
             PRESTOJEĆI SERVISI
           </span>
         </div>
 
-        {/* Single Nearest Item or Clean Notice */}
         {closestUpcomingService ? (
           (() => {
             const catStyle = getCategoryStyle(closestUpcomingService.category);
             const isUrgent = closestUpcomingService.daysRemaining <= 10;
             const isOverdue = closestUpcomingService.daysRemaining < 0;
-
             return (
-              <div
-                className="py-1 flex items-center justify-between"
-              >
+              <div className="py-1 flex items-center justify-between">
                 <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                  <div
-                    className={`w-7.5 h-7.5 rounded-xl ${catStyle.bg} flex items-center justify-center flex-shrink-0`}
-                  >
-                    <CategoryIcon
-                      type={closestUpcomingService.category}
-                      color={catStyle.color}
-                      className="w-4 h-4"
-                    />
+                  <div className={`w-7.5 h-7.5 rounded-xl ${catStyle.bg} flex items-center justify-center flex-shrink-0`}>
+                    <CategoryIcon type={closestUpcomingService.category} color={catStyle.color} className="w-4 h-4" />
                   </div>
-
                   <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-900 truncate">
-                      {closestUpcomingService.title}
-                    </div>
-                    <div className="text-[10px] font-medium text-slate-500 truncate">
-                      Rok {closestUpcomingService.targetDate}
-                    </div>
+                    <div className="text-xs font-bold text-slate-900 truncate">{closestUpcomingService.title}</div>
+                    <div className="text-[10px] font-medium text-slate-500 truncate">Rok {closestUpcomingService.targetDate}</div>
                   </div>
                 </div>
-
                 <div className="flex items-center space-x-1.5 flex-shrink-0">
-                  <span
-                    className={`text-xs font-bold px-2 py-0.5 rounded-lg border flex items-center space-x-1 ${
-                      isOverdue
-                        ? 'bg-red-50 text-red-700 border-red-200'
-                        : isUrgent
-                        ? 'bg-amber-50 text-amber-600 border-amber-200/60'
-                        : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
-                    }`}
-                  >
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border flex items-center space-x-1 ${isOverdue ? 'bg-red-50 text-red-700 border-red-200' : isUrgent ? 'bg-amber-50 text-amber-600 border-amber-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'}`}>
                     <Clock className="w-3 h-3 stroke-[2.5]" />
-                    <span>
-                      {isOverdue
-                        ? 'Dospjelo'
-                        : `${closestUpcomingService.daysRemaining} dana`}
-                    </span>
+                    <span>{isOverdue ? 'Dospjelo' : `${closestUpcomingService.daysRemaining} dana`}</span>
                   </span>
                 </div>
               </div>
@@ -371,16 +327,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           })()
         ) : (
           <div className="py-2 text-center">
-            <p className="text-xs text-slate-500 font-medium">
-              Trenutno nema predstojećih servisa.
-            </p>
+            <p className="text-xs text-slate-500 font-medium">Trenutno nema predstojećih servisa.</p>
           </div>
         )}
       </div>
 
       {/* 6. DONJE KARTICE: REGISTRACIJA, MALI SERVIS, VELIKI SERVIS */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-2.5 flex-shrink-0 mt-auto">
-        {/* 1. REGISTRACIJA */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-2.5 flex-shrink-0">
         <div
           onClick={() => (onOpenObligationModal ? onOpenObligationModal() : onNavigateTab && onNavigateTab('odrzavanje'))}
           className="bg-white border border-slate-200/80 rounded-2xl p-2.5 shadow-2xs flex flex-col items-center justify-between text-center cursor-pointer hover:border-[#1D68F2]/50 hover:shadow-xs transition-all min-h-[98px]"
@@ -388,37 +341,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="w-7 h-7 rounded-xl bg-blue-50 text-[#1D68F2] flex items-center justify-center mb-0.5">
             <Calendar className="w-3.5 h-3.5 stroke-[2.2]" />
           </div>
-          <div className="text-[11px] font-bold text-slate-800 leading-tight">
-            Registracija
-          </div>
-
+          <div className="text-[11px] font-bold text-slate-800 leading-tight">Registracija</div>
           {registrationObligation ? (
             <div className="mt-0.5 space-y-0.5 w-full flex flex-col items-center">
-              <div className="text-[11px] font-extrabold text-[#1D68F2] leading-tight">
-                {registrationObligation.expiryDate}
-              </div>
-              <span
-                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
-                  registrationObligation.daysRemaining < 0
-                    ? 'bg-red-50 text-red-700 border-red-200'
-                    : registrationObligation.daysRemaining <= 30
-                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                    : 'bg-blue-50 text-[#1D68F2] border-blue-100'
-                }`}
-              >
-                {registrationObligation.daysRemaining < 0
-                  ? 'Istekla'
-                  : `${registrationObligation.daysRemaining} dana`}
+              <div className="text-[11px] font-extrabold text-[#1D68F2] leading-tight">{registrationObligation.expiryDate}</div>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${registrationObligation.daysRemaining < 0 ? 'bg-red-50 text-red-700 border-red-200' : registrationObligation.daysRemaining <= 30 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-blue-50 text-[#1D68F2] border-blue-100'}`}>
+                {registrationObligation.daysRemaining < 0 ? 'Istekla' : `${registrationObligation.daysRemaining} dana`}
               </span>
             </div>
           ) : (
-            <div className="mt-1 text-[10px] font-medium text-slate-400">
-              Nije uneseno
-            </div>
+            <div className="mt-1 text-[10px] font-medium text-slate-400">Nije uneseno</div>
           )}
         </div>
 
-        {/* 2. MALI SERVIS */}
         <div
           onClick={() => (onOpenRegularService ? onOpenRegularService('mali') : onNavigateTab && onNavigateTab('odrzavanje'))}
           className="bg-white border border-slate-200/80 rounded-2xl p-2.5 shadow-2xs flex flex-col items-center justify-between text-center cursor-pointer hover:border-emerald-400/60 hover:shadow-xs transition-all min-h-[98px]"
@@ -426,37 +361,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-0.5">
             <Wrench className="w-3.5 h-3.5 stroke-[2.2]" />
           </div>
-          <div className="text-[11px] font-bold text-slate-800 leading-tight">
-            Mali servis
-          </div>
-
+          <div className="text-[11px] font-bold text-slate-800 leading-tight">Mali servis</div>
           {!maliServis?.lastServiceDate ? (
-            <div className="mt-1 text-[10px] font-medium text-slate-400">
-              Nije uneseno
-            </div>
+            <div className="mt-1 text-[10px] font-medium text-slate-400">Nije uneseno</div>
           ) : maliServis.hasInterval === false ? (
             <div className="mt-0.5 space-y-0.5 w-full">
-              <div className="text-[10px] font-bold text-slate-700 leading-tight truncate">
-                {maliServis.lastServiceDate}
-              </div>
-              <div className="text-[8px] font-medium text-slate-400">
-                Bez intervala
-              </div>
+              <div className="text-[10px] font-bold text-slate-700 leading-tight truncate">{maliServis.lastServiceDate}</div>
+              <div className="text-[8px] font-medium text-slate-400">Bez intervala</div>
             </div>
           ) : maliServis.isOverdue ? (
             <div className="mt-0.5 space-y-0.5 w-full flex flex-col items-center">
-              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 uppercase tracking-wide">
-                DOSPIO
-              </span>
-              <div className="text-[9px] font-bold text-slate-600 truncate max-w-full">
-                {maliServis.targetDate || (maliServis.targetKm ? `${formatKm(maliServis.targetKm)} km` : '')}
-              </div>
+              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 uppercase tracking-wide">DOSPIO</span>
+              <div className="text-[9px] font-bold text-slate-600 truncate max-w-full">{maliServis.targetDate || (maliServis.targetKm ? `${formatKm(maliServis.targetKm)} km` : '')}</div>
             </div>
           ) : (
             <div className="mt-0.5 space-y-0.5 w-full">
-              <div className="text-[11px] font-extrabold text-emerald-600 leading-tight truncate">
-                {maliServis.targetDate || (maliServis.daysRemaining !== undefined ? `${maliServis.daysRemaining} dana` : 'Planirano')}
-              </div>
+              <div className="text-[11px] font-extrabold text-emerald-600 leading-tight truncate">{maliServis.targetDate || (maliServis.daysRemaining !== undefined ? `${maliServis.daysRemaining} dana` : 'Planirano')}</div>
               <div className="text-[9px] font-medium text-slate-500 truncate">
                 {maliServis.daysRemaining !== undefined && maliServis.kmRemaining !== undefined
                   ? `${maliServis.daysRemaining} d / ${formatKm(maliServis.kmRemaining)} km`
@@ -472,7 +392,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           )}
         </div>
 
-        {/* 3. VELIKI SERVIS */}
         <div
           onClick={() => (onOpenRegularService ? onOpenRegularService('veliki') : onNavigateTab && onNavigateTab('odrzavanje'))}
           className="bg-white border border-slate-200/80 rounded-2xl p-2.5 shadow-2xs flex flex-col items-center justify-between text-center cursor-pointer hover:border-purple-400/60 hover:shadow-xs transition-all min-h-[98px]"
@@ -480,37 +399,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="w-7 h-7 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-0.5">
             <Wrench className="w-3.5 h-3.5 stroke-[2.2] text-purple-600" />
           </div>
-          <div className="text-[11px] font-bold text-slate-800 leading-tight">
-            Veliki servis
-          </div>
-
+          <div className="text-[11px] font-bold text-slate-800 leading-tight">Veliki servis</div>
           {!velikiServis?.lastServiceDate ? (
-            <div className="mt-1 text-[10px] font-medium text-slate-400">
-              Nije uneseno
-            </div>
+            <div className="mt-1 text-[10px] font-medium text-slate-400">Nije uneseno</div>
           ) : velikiServis.hasInterval === false ? (
             <div className="mt-0.5 space-y-0.5 w-full">
-              <div className="text-[10px] font-bold text-slate-700 leading-tight truncate">
-                {velikiServis.lastServiceDate}
-              </div>
-              <div className="text-[8px] font-medium text-slate-400">
-                Bez intervala
-              </div>
+              <div className="text-[10px] font-bold text-slate-700 leading-tight truncate">{velikiServis.lastServiceDate}</div>
+              <div className="text-[8px] font-medium text-slate-400">Bez intervala</div>
             </div>
           ) : velikiServis.isOverdue ? (
             <div className="mt-0.5 space-y-0.5 w-full flex flex-col items-center">
-              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 uppercase tracking-wide">
-                DOSPIO
-              </span>
-              <div className="text-[9px] font-bold text-slate-600 truncate max-w-full">
-                {velikiServis.targetDate || (velikiServis.targetKm ? `${formatKm(velikiServis.targetKm)} km` : '')}
-              </div>
+              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 uppercase tracking-wide">DOSPIO</span>
+              <div className="text-[9px] font-bold text-slate-600 truncate max-w-full">{velikiServis.targetDate || (velikiServis.targetKm ? `${formatKm(velikiServis.targetKm)} km` : '')}</div>
             </div>
           ) : (
             <div className="mt-0.5 space-y-0.5 w-full">
-              <div className="text-[11px] font-extrabold text-purple-600 leading-tight truncate">
-                {velikiServis.targetDate || (velikiServis.daysRemaining !== undefined ? `${velikiServis.daysRemaining} dana` : 'Planirano')}
-              </div>
+              <div className="text-[11px] font-extrabold text-purple-600 leading-tight truncate">{velikiServis.targetDate || (velikiServis.daysRemaining !== undefined ? `${velikiServis.daysRemaining} dana` : 'Planirano')}</div>
               <div className="text-[9px] font-medium text-slate-500 truncate">
                 {velikiServis.daysRemaining !== undefined && velikiServis.kmRemaining !== undefined
                   ? `${velikiServis.daysRemaining} d / ${formatKm(velikiServis.kmRemaining)} km`
@@ -529,4 +433,3 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     </div>
   );
 };
-
