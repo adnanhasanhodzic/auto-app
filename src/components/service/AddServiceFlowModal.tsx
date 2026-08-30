@@ -71,7 +71,6 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
 
   const handleCategorySelect = (cat: ServiceCategory) => {
     setSelectedCategory(cat);
-    setSelectedItems([]);
     setStep('subgroup');
   };
 
@@ -92,7 +91,9 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   };
 
   const handleSingleItemAndProceed = (item: string, groupName: string) => {
-    setSelectedItems([item]);
+    setSelectedItems((currentItems) =>
+      currentItems.includes(item) ? currentItems : [...currentItems, item]
+    );
     setPrimaryTitle(item);
     setSelectedGroup(groupName);
     setStep('entry');
