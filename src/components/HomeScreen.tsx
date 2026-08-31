@@ -275,11 +275,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1.5 flex-shrink-0">
+                  <div className="flex items-center flex-shrink-0">
                     <span className="text-xs font-bold text-slate-800 bg-slate-100/90 px-2 py-0.5 rounded-lg">
                       {record.cost} {record.currency || 'KM'}
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 stroke-[2]" />
                   </div>
                 </div>
               );
