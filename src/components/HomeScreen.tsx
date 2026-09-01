@@ -52,7 +52,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     return num.toLocaleString('de-DE');
   };
 
-  // Find registration obligation (if any)
   const registrationObligation = useMemo(() => {
     return obligations.find(
       (o) =>
@@ -61,7 +60,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     );
   }, [obligations]);
 
-  // Sort recent services by actual date value descending (newest first), maximum 7 items
   const sortedRecentServices = useMemo(() => {
     return [...recentServices]
       .sort((a, b) => {
@@ -69,10 +67,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         const timeB = getDateTimestamp(b.date, b.createdAt);
         return timeB - timeA;
       })
-      .slice(0, 7);
+      .slice(0, 5);
   }, [recentServices]);
 
-  // Compute single closest upcoming service item under <= 30 days (excluding registration, mali servis, veliki servis)
   const closestUpcomingService = useMemo(() => {
     const candidateList: {
       id: string;
@@ -82,11 +79,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       category?: string;
     }[] = [];
 
-    // 1. From services with nextService
     recentServices.forEach((s) => {
       const lowerTitle = (s.title || '').toLowerCase();
       const lowerCat = (s.category || '').toLowerCase();
-      // Exclude registracija, mali servis, veliki servis (they have dedicated cards)
       if (
         lowerTitle.includes('registracij') ||
         lowerCat === 'registracija' ||
@@ -110,7 +105,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       }
     });
 
-    // 2. From obligations (other than registration)
     obligations.forEach((o) => {
       const lowerTitle = (o.title || '').toLowerCase();
       if (
@@ -135,22 +129,18 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     });
 
     if (candidateList.length === 0) return null;
-
-    // Sort by days remaining (closest deadline first: overdue first, then lowest days)
     candidateList.sort((a, b) => a.daysRemaining - b.daysRemaining);
     return candidateList[0];
   }, [recentServices, obligations]);
 
   return (
     <div id="home-screen" className="h-full flex flex-col overflow-hidden bg-[#F8FAFC] select-none px-4 pt-3 pb-3 space-y-2.5">
-      {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-full shadow-lg transition-all animate-bounce">
           {toastMessage}
         </div>
       )}
 
-      {/* 1. HEADER: APP TITLE & VEHICLE SELECTOR */}
       <div className="flex items-center justify-between">
         <div className="text-xl font-black tracking-tight">
           <span className="text-[#0F172A]">MOJ </span>
@@ -171,9 +161,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </button>
       </div>
 
-      {/* 2. VEHICLE PHOTO + BASIC DATA + MILEAGE */}
       <div className="flex items-center space-x-3.5">
-        {/* Vehicle Image or Neutral Illustration */}
         <div className="w-22 h-20 sm:w-26 sm:h-22 rounded-2xl bg-white border border-slate-200/80 shadow-2xs overflow-hidden flex-shrink-0 flex items-center justify-center p-1 relative">
           {car.image ? (
             <img
@@ -190,10 +178,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path
-                  d="M12 44 L22 44 C24 35 34 35 36 44 L78 44 C80 35 90 35 92 44 L108 44 C112 44 115 41 114 36 L110 28 C108 24 103 22 98 22 L82 22 L68 12 C65 10 60 9 55 9 L32 9 C27 9 22 13 20 18 L10 32 C8 35 8 40 12 44 Z"
-                  className="fill-slate-200/60 stroke-slate-400"
-                />
+                <path d="M12 44 L22 44 C24 35 34 35 36 44 L78 44 C80 35 90 35 92 44 L108 44 C112 44 115 41 114 36 L110 28 C108 24 103 22 98 22 L82 22 L68 12 C65 10 60 9 55 9 L32 9 C27 9 22 13 20 18 L10 32 C8 35 8 40 12 44 Z" className="fill-slate-200/60 stroke-slate-400" />
                 <path d="M36 22 L78 22" strokeWidth="2" strokeDasharray="3 3" />
                 <path d="M48 12 L50 22" strokeWidth="2" />
                 <circle cx="29" cy="44" r="9" className="fill-white stroke-slate-500" strokeWidth="4" />
@@ -205,7 +190,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           )}
         </div>
 
-        {/* Vehicle Text Details */}
         <div className="flex-1 min-w-0">
           <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">
             {car.make} {car.model}
@@ -213,8 +197,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <p className="text-xs font-semibold text-slate-500 mt-0.5 truncate">
             {[car.engine, car.powerKw ? `${car.powerKw} kW` : null, car.year].filter(Boolean).join(' • ') || (car.fuel || 'Vozilo')}
           </p>
-
-          {/* Mileage */}
           <div className="mt-1 space-y-0.5">
             <div className="text-base font-extrabold text-[#1D68F2] tracking-tight leading-tight">
               {formatKm(car.mileage)} km
@@ -226,7 +208,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       </div>
 
-      {/* 3. ACTION BUTTON: DODAJ RAD / SERVIS */}
       <motion.button
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.98 }}
@@ -237,7 +218,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <span className="tracking-wide">DODAJ RAD / SERVIS</span>
       </motion.button>
 
-      {/* 4. POSLJEDNJI RADOVI */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-2xs space-y-1.5 flex-shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold text-slate-900 tracking-wider uppercase">
@@ -262,21 +242,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <div
                   key={record.id}
                   onClick={() => onNavigateTab && onNavigateTab('istorija')}
-                  className="py-1.5 first:pt-0.5 last:pb-0 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
+                  className="py-3 first:pt-2 last:pb-2 flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
                 >
-                  <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                    <div className={`w-7.5 h-7.5 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}>
-                      <CategoryIcon type={record.category} color={style.color} className="w-4 h-4" />
+                  <div className="flex items-center space-x-3 min-w-0 pr-2">
+                    <div className={`w-9 h-9 rounded-xl ${style.bg} flex items-center justify-center flex-shrink-0`}>
+                      <CategoryIcon type={record.category} color={style.color} className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-bold text-slate-900 truncate">{record.title}</div>
-                      <div className="text-[10px] font-medium text-slate-500 truncate">
+                      <div className="text-sm font-bold text-slate-900 truncate">{record.title}</div>
+                      <div className="text-[11px] font-medium text-slate-500 truncate">
                         {record.date} • {formatKm(record.mileage)} km
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center flex-shrink-0">
-                    <span className="text-xs font-bold text-slate-800 bg-slate-100/90 px-2 py-0.5 rounded-lg">
+                    <span className="text-sm font-bold text-slate-800 bg-slate-100/90 px-2.5 py-1 rounded-lg">
                       {record.cost} {record.currency || 'KM'}
                     </span>
                   </div>
@@ -291,7 +271,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
       </div>
 
-      {/* 5. PRESTOJEĆI SERVISI */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-3 shadow-2xs space-y-1.5 flex-shrink-0 mt-auto">
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold text-slate-900 tracking-wider uppercase">
@@ -331,7 +310,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         )}
       </div>
 
-      {/* 6. DONJE KARTICE: REGISTRACIJA, MALI SERVIS, VELIKI SERVIS */}
       <div className="grid grid-cols-3 gap-2 sm:gap-2.5 flex-shrink-0">
         <div
           onClick={() => (onOpenObligationModal ? onOpenObligationModal() : onNavigateTab && onNavigateTab('odrzavanje'))}
