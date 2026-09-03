@@ -43,7 +43,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
 
   // Fuel form state
   const [fuelDate, setFuelDate] = useState<string>(formatDateCustom(new Date()));
-  const [fuelMileage, setFuelMileage] = useState<string>(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');
+  const [fuelMileage, setFuelMileage] = useState<string>('');
   const [fuelCost, setFuelCost] = useState<string>('');
   const [fuelError, setFuelError] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -72,7 +72,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
         setIsAddingMoreItems(false);
         setAddItemsStep('category');
         setFuelDate(formatDateCustom(new Date()));
-        setFuelMileage(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');
+        setFuelMileage('');
         setFuelCost('');
         setFuelError(null);
       }
@@ -99,7 +99,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
 
   const handleSelectFuel = () => {
     setFuelDate(formatDateCustom(new Date()));
-    setFuelMileage(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');
+    setFuelMileage('');
     setFuelCost('');
     setFuelError(null);
     setStep('fuel');
@@ -163,8 +163,8 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
     }
 
     const mileageNum = parseInt(fuelMileage.replace(/\D/g, ''), 10);
-    if (isNaN(mileageNum) || mileageNum < 0) {
-      setFuelError('Molimo unesite validnu kilometražu.');
+    if (isNaN(mileageNum) || mileageNum <= 0) {
+      setFuelError('Molimo unesite kilometražu na kojoj je gorivo natočeno.');
       return;
     }
 
@@ -307,12 +307,13 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      KILOMETRAŽA
+                      KILOMETRAŽA <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <Gauge className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
+                        required
                         value={fuelMileage}
                         onChange={(e) => {
                           const digitsOnly = e.target.value.replace(/\D/g, '');
@@ -323,7 +324,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                           const num = parseInt(digitsOnly, 10);
                           setFuelMileage(num.toLocaleString('de-DE'));
                         }}
-                        placeholder="195.000"
+                        placeholder="Unesite km"
                         className="w-full pl-10 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                       />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
