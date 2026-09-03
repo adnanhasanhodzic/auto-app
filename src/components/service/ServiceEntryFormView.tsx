@@ -65,7 +65,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   const [title, setTitle] = useState(existingRecord?.title || initialTitle || 'Redovni servis');
   const [date, setDate] = useState(existingRecord?.date || getTodayFormatted());
   const [mileage, setMileage] = useState<number>(
-    existingRecord?.mileage !== undefined ? existingRecord.mileage : (car.mileage || 0)
+    existingRecord?.mileage !== undefined ? existingRecord.mileage : 0
   );
 
   const initialItemsList = useMemo(() => {
