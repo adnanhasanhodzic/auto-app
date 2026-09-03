@@ -274,7 +274,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
       </div>
 
       {/* Main Form Scrollable Content */}
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+      <form id="service-entry-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
         {/* 1. BASIC DETAILS: Naziv, Datum, Kilometraža */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3.5">
           <div>
@@ -326,15 +326,17 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
             {/* Kilometraža */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Kilometraža (km)
+                Kilometraža (km) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Gauge className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="number"
+                  required
+                  min="1"
                   value={mileage || ''}
                   onChange={(e) => setMileage(Number(e.target.value))}
-                  placeholder="0 km"
+                  placeholder="Unesite km"
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1D68F2]"
                 />
               </div>
@@ -737,10 +739,10 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
       {/* Bottom Save Action Button */}
       <div className="bg-white px-5 py-3 border-t border-slate-100 shadow-lg">
         <motion.button
-          type="button"
+          type="submit"
+          form="service-entry-form"
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleSubmit}
           className="w-full py-3.5 px-4 bg-[#1D68F2] hover:bg-blue-600 active:bg-blue-700 text-white rounded-xl font-bold text-sm uppercase tracking-wider shadow-md transition-all cursor-pointer flex items-center justify-center space-x-2"
         >
           <Check className="w-4 h-4 stroke-[3]" />
