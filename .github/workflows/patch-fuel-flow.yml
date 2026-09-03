@@ -1,0 +1,42 @@
+name: Fix active fuel mileage form
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-fuel-flow.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch active fuel form
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/service/AddServiceFlowModal.tsx')
+          s = p.read_text()
+          replacements = [
+              ("const [fuelMileage, setFuelMileage] = useState<string>(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');", "const [fuelMileage, setFuelMileage] = useState<string>('');"),
+              ("setFuelMileage(car?.mileage ? car.mileage.toLocaleString('de-DE') : '');", "setFuelMileage('');"),
+              ("if (isNaN(mileageNum) || mileageNum < 0) {\n      setFuelError('Molimo unesite validnu kilometražu.');", "if (isNaN(mileageNum) || mileageNum <= 0) {\n      setFuelError('Molimo unesite kilometražu na kojoj je gorivo natočeno.');"),
+              ("KILOMETRAŽA\n                    </label>", "KILOMETRAŽA <span className=\"text-red-500\">*</span>\n                    </label>"),
+              ("type=\"text\"\n                        value={fuelMileage}", "type=\"text\"\n                        required\n                        value={fuelMileage}"),
+              ("placeholder=\"195.000\"", "placeholder=\"Unesite km\""),
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'Expected text not found: {old[:80]}')
+              s = s.replace(old, new)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/service/AddServiceFlowModal.tsx
+          git commit -m "Require manual mileage in active fuel form"
+          git push
