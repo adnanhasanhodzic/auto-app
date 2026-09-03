@@ -21,7 +21,7 @@ export const AddFuelModal: React.FC<AddFuelModalProps> = ({
   onSave,
 }) => {
   const [date, setDate] = useState<string>(formatDateCustom(new Date()));
-  const [mileage, setMileage] = useState<string>(car.mileage ? car.mileage.toLocaleString('de-DE') : '');
+  const [mileage, setMileage] = useState<string>('');
   const [cost, setCost] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -34,12 +34,12 @@ export const AddFuelModal: React.FC<AddFuelModalProps> = ({
         setCost(existingRecord.cost ? existingRecord.cost.toString() : '');
       } else {
         setDate(formatDateCustom(new Date()));
-        setMileage(car.mileage ? car.mileage.toLocaleString('de-DE') : '');
+        setMileage('');
         setCost('');
       }
       setError(null);
     }
-  }, [isOpen, existingRecord, car.mileage]);
+  }, [isOpen, existingRecord]);
 
   if (!isOpen) return null;
 
@@ -63,8 +63,8 @@ export const AddFuelModal: React.FC<AddFuelModalProps> = ({
     }
 
     const mileageNum = parseInt(mileage.replace(/\D/g, ''), 10);
-    if (isNaN(mileageNum) || mileageNum < 0) {
-      setError('Molimo unesite validnu kilometražu.');
+    if (isNaN(mileageNum) || mileageNum <= 0) {
+      setError('Molimo unesite kilometražu na kojoj je gorivo natočeno.');
       return;
     }
 
@@ -101,7 +101,6 @@ export const AddFuelModal: React.FC<AddFuelModalProps> = ({
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         >
-          {/* Header */}
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/40">
             <div className="flex items-center space-x-2.5">
               <div className="w-9 h-9 rounded-xl bg-amber-100/90 text-amber-700 flex items-center justify-center flex-shrink-0">
@@ -116,119 +115,49 @@ export const AddFuelModal: React.FC<AddFuelModalProps> = ({
                 </p>
               </div>
             </div>
-
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-            >
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer">
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700">
-                {error}
-              </div>
-            )}
+            {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700">{error}</div>}
 
-            {/* Datum */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                DATUM
-              </label>
-              <div
-                className="relative cursor-pointer"
-                onClick={() => setIsDatePickerOpen(true)}
-              >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsDatePickerOpen(true);
-                  }}
-                  className="w-8 h-8 absolute left-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 hover:text-amber-600 transition-colors cursor-pointer"
-                  title="Otvori kalendar"
-                >
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">DATUM</label>
+              <div className="relative cursor-pointer" onClick={() => setIsDatePickerOpen(true)}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setIsDatePickerOpen(true); }} className="w-8 h-8 absolute left-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 hover:text-amber-600 transition-colors cursor-pointer" title="Otvori kalendar">
                   <Calendar className="w-4 h-4" />
                 </button>
-                <input
-                  type="text"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  onClick={() => setIsDatePickerOpen(true)}
-                  placeholder="25.08.2026."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer"
-                />
+                <input type="text" value={date} onChange={(e) => setDate(e.target.value)} onClick={() => setIsDatePickerOpen(true)} placeholder="25.08.2026." className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer" />
               </div>
             </div>
 
-            {/* Kilometraža */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                KILOMETRAŽA
-              </label>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">KILOMETRAŽA <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Gauge className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={mileage}
-                  onChange={(e) => handleMileageChange(e.target.value)}
-                  placeholder="195.000"
-                  className="w-full pl-10 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  km
-                </span>
+                <input type="text" required value={mileage} onChange={(e) => handleMileageChange(e.target.value)} placeholder="Unesite km" className="w-full pl-10 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">km</span>
               </div>
             </div>
 
-            {/* Iznos */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                IZNOS
-              </label>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">IZNOS</label>
               <div className="relative">
-                <input
-                  type="text"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  placeholder="85"
-                  className="w-full pl-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-amber-600">
-                  KM
-                </span>
+                <input type="text" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="85" className="w-full pl-4 pr-12 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-amber-600">KM</span>
               </div>
             </div>
 
-            {/* Buttons */}
             <div className="pt-2 flex items-center space-x-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
-              >
-                Odustani
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-extrabold text-white bg-amber-600 hover:bg-amber-700 transition-colors shadow-xs cursor-pointer"
-              >
-                SAČUVAJ TOČENJE
-              </button>
+              <button type="button" onClick={onClose} className="flex-1 py-3 px-4 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer">Odustani</button>
+              <button type="submit" className="flex-1 py-3 px-4 rounded-xl text-xs font-extrabold text-white bg-amber-600 hover:bg-amber-700 transition-colors shadow-xs cursor-pointer">SAČUVAJ TOČENJE</button>
             </div>
           </form>
         </motion.div>
 
-        <DatePickerModal
-          isOpen={isDatePickerOpen}
-          value={date}
-          title="Datum točenja goriva"
-          onClose={() => setIsDatePickerOpen(false)}
-          onSelect={(newDate) => setDate(newDate)}
-        />
+        <DatePickerModal isOpen={isDatePickerOpen} value={date} title="Datum točenja goriva" onClose={() => setIsDatePickerOpen(false)} onSelect={(newDate) => setDate(newDate)} />
       </div>
     </AnimatePresence>
   );
