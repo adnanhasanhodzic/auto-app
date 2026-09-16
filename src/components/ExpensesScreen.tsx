@@ -4,6 +4,7 @@ import { ChevronRight, ArrowLeft, FileText } from 'lucide-react';
 import { ServiceRecord, CarData } from '../types';
 import { CategoryIcon, getCategoryStyle } from './CategoryIcons';
 import { getDateTimestamp, parseCustomDate } from '../utils/dateUtils';
+import { BackupPanel } from './BackupPanel';
 
 interface ExpensesScreenProps {
   car: CarData;
@@ -265,6 +266,7 @@ export const ExpensesScreen: React.FC<ExpensesScreenProps> = ({ car, services })
               </div>
             </div>
           </div>
+          <BackupPanel />
         </div>
       )}
     </div>
