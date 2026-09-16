@@ -1,70 +1,28 @@
-
-/
-Claude finished the response
-auto-app-main.zip
-auto-app-main.zip
-ZIP
-mozes li ovdje odrediti koji je kljuc, tako da svaka naredna promjena bude update postojece aplikacije ? ili ako mozes povezati github projekt, pa da odradimo izmjene u aplikaciji ?? jer ovako svaki put moram reinstall app, ne ide update, i time gubim unesene podatke. 
-https://github.com/adnanhasanhodzic/auto-app
-
-Ran 7 commands, read memory, and 3 more tools
-Pronašao sam uzrok. Nije stvar u ključu unutar same aplikacije nego u tome čime GitHub Actions potpisuje APK pri svakom pokretanju workflow-a.
-
-Uzrok: Workflow gradi APK sa ./gradlew clean assembleDebug. Debug build tip se potpisuje takozvanim debug keystore-om koji se automatski generiše na ~/.android/debug.keystore — ali GitHub Actions runner je svaki put potpuno svježa mašina, taj fajl ne postoji unaprijed pa se generiše iznova, sa nasumičnim ključem, u svakom build-u. Android tretira APK potpisan drugim ključem kao drugu aplikaciju, čak i kad je applicationId (com.mojauto.app) isti — zato ti sistem traži deinstalaciju umjesto update-a, i baza/podaci iz stare instalacije se gube.
-
-Rješenje: generisati taj debug keystore jednom, sačuvati ga kao GitHub secret, i u workflow-u ga vraćati na isto mjesto prije svakog build-a. Onda je ključ uvijek isti, i svaki naredni APK je "update" postojeće instalacije.
-
-Generisao sam ti taj keystore (sa standardnim Android debug kredencijalima) i već sam ubacio odgovarajući korak u workflow fajl.
-
-Presented 3 files
-Zamijeni workflow fajl
-Zamijeni .github/workflows/build-apk.yml postojećim fajlom iz priloga — dodat je samo jedan korak prije build-a koji vraća isti keystore na ~/.android/debug.keystore.
-1
-2
-3
-4
-Što se tiče direktnog povezivanja na tvoj GitHub repo — nemam konektor koji bi mi omogućio da sam pushujem commit-e u adnanhasanhodzic/auto-app. Mogu čitati repo (kao sad, preko zip-a ili linka) i pripremati gotove izmjene/patch-eve fajlova, ali sam commit i push i dalje moraš uraditi ti. Nakon što ovaj korak sa ključem odradiš jednom, buduće izmjene aplikacije ti šaljem kao konkretne izmjene fajlova, ti ih commit-uješ, a APK update će raditi normalno bez brisanja podataka.
-
-
-Debug.keystore
-B64 
-
-Debug
-KEYSTORE 
-
-Build apk
-YML 
-
-Write a message…
-
-
-Claude is AI and can make mistakes. Please double-check responses.
-Build apk · YML
 name: Build MOJ AUTO APK
- 
+
 on:
   workflow_dispatch:
   push:
     branches:
       - main
- 
+
 permissions:
   contents: write
- 
+
 jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
       - name: Preuzmi kod
         uses: actions/checkout@v4
- 
+
       - name: Ukloni PDF opciju i postavi O aplikaciji
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
- 
+
           p = Path('src/components/ExpensesScreen.tsx')
           if p.exists():
               t = p.read_text(encoding='utf-8')
@@ -83,7 +41,7 @@ jobs:
                   )
               t = t.replace('Evidencija vozila, servisa, radova, troškova, goriva i održavanja.\n                </div>\n                </div>', 'Evidencija vozila, servisa, radova, troškova, goriva i održavanja.\n                </div>')
               p.write_text(t, encoding='utf-8')
- 
+
           # Fix duplicate textual plus without assuming a specific modal path.
           for candidate in [
               Path('src/components/RegularServiceModal.tsx'),
@@ -94,46 +52,46 @@ jobs:
                   s = s.replace('<span>+ Dodaj stavku</span>', '<span>Dodaj stavku</span>')
                   candidate.write_text(s, encoding='utf-8')
           PY
- 
+
       - name: Postavi Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
- 
+
       - name: Instaliraj dependencies
         run: npm install
- 
+
       - name: Instaliraj Capacitor
         run: |
           npm install @capacitor/core@7 @capacitor/android@7
           npm install --save-dev @capacitor/cli@7
- 
+
       - name: Napravi Capacitor konfiguraciju
         run: |
           cat > capacitor.config.ts <<'EOF'
           import type { CapacitorConfig } from '@capacitor/cli';
- 
+
           const config: CapacitorConfig = {
             appId: 'com.mojauto.app',
             appName: 'MOJ AUTO',
             webDir: 'dist'
           };
- 
+
           export default config;
           EOF
- 
+
       - name: Build React aplikacije
         run: npm run build
- 
+
       - name: Dodaj Android platformu
         run: npx cap add android
- 
+
       - name: Provjeri logo
         run: test -f src/MA-LOGO.png
- 
+
       - name: Instaliraj ImageMagick
         run: sudo apt-get update && sudo apt-get install -y imagemagick
- 
+
       - name: Generiši launcher ikone
         run: |
           rm -rf android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/mipmap-anydpi
@@ -144,37 +102,37 @@ jobs:
           convert src/MA-LOGO.png -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
           convert src/MA-LOGO.png -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
           for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do cp android/app/src/main/res/mipmap-$d/ic_launcher.png android/app/src/main/res/mipmap-$d/ic_launcher_round.png; done
- 
+
       - name: Postavi immersive fullscreen
         run: |
           mkdir -p android/app/src/main/java/com/mojauto/app
           cat > android/app/src/main/java/com/mojauto/app/MainActivity.java <<'EOF'
           package com.mojauto.app;
- 
+
           import android.os.Bundle;
           import android.view.View;
           import android.view.WindowManager;
           import com.getcapacitor.BridgeActivity;
- 
+
           public class MainActivity extends BridgeActivity {
               @Override
               public void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   hideSystemUI();
               }
- 
+
               @Override
               public void onResume() {
                   super.onResume();
                   hideSystemUI();
               }
- 
+
               @Override
               public void onWindowFocusChanged(boolean hasFocus) {
                   super.onWindowFocusChanged(hasFocus);
                   if (hasFocus) hideSystemUI();
               }
- 
+
               private void hideSystemUI() {
                   getWindow().setFlags(
                       WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -191,32 +149,30 @@ jobs:
               }
           }
           EOF
- 
+
       - name: Kopiraj web aplikaciju
         run: npx cap copy android
- 
+
       - name: Sinhronizuj Capacitor
         run: npx cap sync android
- 
+
       - name: Postavi Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
- 
+
       - name: Postavi trajni debug keystore
         run: |
           mkdir -p ~/.android
           echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
- 
+
       - name: Build APK
         working-directory: android
         run: ./gradlew clean assembleDebug
- 
+
       - name: Sačuvaj APK
         uses: actions/upload-artifact@v4
         with:
           name: MOJ-AUTO-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
- 
-
