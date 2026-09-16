@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ServiceRecord, CarData } from '../types';
 import { formatDateToInput, formatDateToDisplay, addMonthsToDate, calculateDaysRemaining, getTodayFormatted } from '../utils/dateUtils';
+import { validateMileageForDate } from '../utils/carUtils';
 import { DatePickerModal } from './DatePickerModal';
 
 interface RegularServiceModalProps {
@@ -30,6 +31,7 @@ interface RegularServiceModalProps {
   car: CarData;
   lastRecord?: ServiceRecord | null;
   existingRecord?: ServiceRecord | null;
+  existingRecords: ServiceRecord[];
   onClose: () => void;
   onSave?: (record: ServiceRecord) => void;
   onSaveRecord?: (record: ServiceRecord) => void;
@@ -64,6 +66,7 @@ export const RegularServiceModal: React.FC<RegularServiceModalProps> = ({
   car,
   lastRecord,
   existingRecord,
+  existingRecords,
   onClose,
   onSave,
   onSaveRecord,
@@ -176,6 +179,18 @@ export const RegularServiceModal: React.FC<RegularServiceModalProps> = ({
 
     if (isNaN(numericMileage) || numericMileage <= 0) {
       setError('Molimo unesite kilometražu na kojoj je servis urađen.');
+      return;
+    }
+
+    const mileageCheck = validateMileageForDate(
+      car,
+      existingRecords,
+      formattedDisplayDate,
+      numericMileage,
+      existingRecord?.id
+    );
+    if (!mileageCheck.valid) {
+      setError(mileageCheck.error || 'Neispravna kilometraža.');
       return;
     }
 
