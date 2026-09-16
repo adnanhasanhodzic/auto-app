@@ -414,6 +414,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
       <AddFuelModal
         isOpen={isFuelModalOpen}
         existingRecord={editingFuelRecord}
+        existingRecords={services}
         onClose={() => {
           setIsFuelModalOpen(false);
           setEditingFuelRecord(null);
