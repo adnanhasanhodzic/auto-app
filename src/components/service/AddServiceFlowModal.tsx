@@ -406,7 +406,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                 existingRecord={existingRecord}
                 onSave={handleSaveRecord}
                 onAddItems={() => {
-                  setAddItemsStep('category');
+                  setAddItemsStep(selectedCategory ? 'subgroup' : 'category');
                   setIsAddingMoreItems(true);
                 }}
                 onBack={() => {
