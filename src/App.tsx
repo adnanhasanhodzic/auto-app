@@ -778,6 +778,7 @@ export default function App() {
             isOpen={isAddServiceOpen}
             car={activeCar}
             existingRecord={editingServiceRecord}
+            existingRecords={services}
             onClose={() => {
               setIsAddServiceOpen(false);
               setEditingServiceRecord(null);
@@ -793,6 +794,7 @@ export default function App() {
             serviceType={regularServiceModal.type}
             car={activeCar}
             existingRecord={regularServiceModal.type === 'mali' ? lastMaliRecord : lastVelikiRecord}
+            existingRecords={services}
             onClose={() => setRegularServiceModal({ isOpen: false, type: 'mali' })}
             onSaveRecord={handleSaveRegularService}
             onClearService={handleClearRegularService}
