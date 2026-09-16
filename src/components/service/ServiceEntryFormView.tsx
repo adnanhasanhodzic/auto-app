@@ -85,11 +85,31 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   const [newItemText, setNewItemText] = useState('');
   const [isAddingItem, setIsAddingItem] = useState(false);
 
+  // Tracks which items we've already accounted for from the parent's `initialItems`
+  // (the "add more items" screen updates the parent's list without remounting this
+  // form, so we detect and merge in whatever is new instead of overwriting).
+  const previousInitialItemsRef = useRef<string[]>(initialItemsList);
+  const isFirstItemsSync = useRef(true);
+
   React.useEffect(() => {
-    if (!existingRecord) {
-      setItems(initialItems.length > 0 ? initialItems : [initialTitle].filter(Boolean));
+    if (isFirstItemsSync.current) {
+      isFirstItemsSync.current = false;
+      previousInitialItemsRef.current = initialItems;
+      return;
     }
-  }, [initialItems, initialTitle, existingRecord]);
+    const previous = previousInitialItemsRef.current;
+    const newlyAdded = initialItems.filter((item) => !previous.includes(item));
+    if (newlyAdded.length > 0) {
+      setItems((current) => {
+        const merged = [...current];
+        newlyAdded.forEach((item) => {
+          if (!merged.includes(item)) merged.push(item);
+        });
+        return merged;
+      });
+    }
+    previousInitialItemsRef.current = initialItems;
+  }, [initialItems]);
 
   const [cost, setCost] = useState<string>(
     existingRecord?.cost !== undefined && existingRecord.cost !== null
