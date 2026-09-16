@@ -141,8 +141,19 @@ export function calculateWarrantyStatus(
     };
   }
 
-  const monthsRemaining = Math.floor(daysRemaining / 30);
-  const extraDaysRemaining = daysRemaining % 30;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endNormalized = new Date(end);
+  endNormalized.setHours(0, 0, 0, 0);
+
+  let monthsRemaining = (endNormalized.getFullYear() - today.getFullYear()) * 12 + (endNormalized.getMonth() - today.getMonth());
+  let extraDaysRemaining = endNormalized.getDate() - today.getDate();
+  if (extraDaysRemaining < 0) {
+    monthsRemaining -= 1;
+    const daysInPrevMonth = new Date(endNormalized.getFullYear(), endNormalized.getMonth(), 0).getDate();
+    extraDaysRemaining += daysInPrevMonth;
+  }
+  if (monthsRemaining < 0) monthsRemaining = 0;
 
   let detailText = '';
   if (monthsRemaining > 0) {
