@@ -4,6 +4,37 @@ import { ArrowLeft, X, Search, ChevronDown, ChevronRight, Check, Plus } from 'lu
 import { ServiceCategory } from '../../types';
 import { SERVICE_CATALOG, CATEGORY_CARDS, WorkGroup } from '../../serviceCatalog';
 import { CategoryIcon } from '../CategoryIcons';
+import { STORAGE_KEY_CUSTOM_ITEMS } from '../../data';
+
+const CUSTOM_GROUP_NAME = 'VAŠI DODANI RADOVI';
+
+function loadCustomItems(category: ServiceCategory): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_ITEMS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Record<string, string[]>;
+    return Array.isArray(parsed[category]) ? parsed[category] : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistCustomItem(category: ServiceCategory, item: string): string[] {
+  let all: Record<string, string[]> = {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_ITEMS);
+    if (raw) all = JSON.parse(raw);
+  } catch {
+    all = {};
+  }
+  const current = Array.isArray(all[category]) ? all[category] : [];
+  if (!current.includes(item)) {
+    all[category] = [...current, item];
+    localStorage.setItem(STORAGE_KEY_CUSTOM_ITEMS, JSON.stringify(all));
+    return all[category];
+  }
+  return current;
+}
 
 interface SubGroupSelectViewProps {
   category: ServiceCategory;
@@ -26,9 +57,18 @@ export const SubGroupSelectView: React.FC<SubGroupSelectViewProps> = ({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [customItemInput, setCustomItemInput] = useState('');
   const [isAddingCustom, setIsAddingCustom] = useState(false);
+  const [customItems, setCustomItems] = useState<string[]>(() => loadCustomItems(category));
+
+  React.useEffect(() => {
+    setCustomItems(loadCustomItems(category));
+  }, [category]);
 
   const categoryDef = CATEGORY_CARDS.find((c) => c.id === category) || CATEGORY_CARDS[0];
-  const groups: WorkGroup[] = SERVICE_CATALOG[category] || [];
+  const catalogGroups: WorkGroup[] = SERVICE_CATALOG[category] || [];
+  const groups: WorkGroup[] = useMemo(() => {
+    if (customItems.length === 0) return catalogGroups;
+    return [...catalogGroups, { name: CUSTOM_GROUP_NAME, items: customItems }];
+  }, [catalogGroups, customItems]);
 
   // Toggle group expansion
   const toggleGroup = (groupName: string) => {
@@ -55,8 +95,10 @@ export const SubGroupSelectView: React.FC<SubGroupSelectViewProps> = ({
   }, [groups, searchQuery]);
 
   const handleCustomAdd = () => {
-    if (customItemInput.trim()) {
-      onToggleItem(customItemInput.trim());
+    const value = customItemInput.trim();
+    if (value) {
+      onToggleItem(value);
+      setCustomItems(persistCustomItem(category, value));
       setCustomItemInput('');
       setIsAddingCustom(false);
     }
