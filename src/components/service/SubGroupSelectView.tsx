@@ -6,34 +6,44 @@ import { SERVICE_CATALOG, CATEGORY_CARDS, WorkGroup } from '../../serviceCatalog
 import { CategoryIcon } from '../CategoryIcons';
 import { STORAGE_KEY_CUSTOM_ITEMS } from '../../data';
 
-const CUSTOM_GROUP_NAME = 'VAŠI DODANI RADOVI';
-
-function loadCustomItems(category: ServiceCategory): string[] {
+function loadCustomItemsByGroup(category: ServiceCategory): Record<string, string[]> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_ITEMS);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Record<string, string[]>;
-    return Array.isArray(parsed[category]) ? parsed[category] : [];
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const forCategory = parsed[category];
+    if (Array.isArray(forCategory)) {
+      // Backwards compatibility with the earlier per-category (not per-group) format.
+      return { 'OSTALO - VLASTITI UNOSI': forCategory as string[] };
+    }
+    if (forCategory && typeof forCategory === 'object') {
+      return forCategory as Record<string, string[]>;
+    }
+    return {};
   } catch {
-    return [];
+    return {};
   }
 }
 
-function persistCustomItem(category: ServiceCategory, item: string): string[] {
-  let all: Record<string, string[]> = {};
+function persistCustomItem(category: ServiceCategory, groupName: string, item: string): Record<string, string[]> {
+  let all: Record<string, Record<string, string[]>> = {};
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CUSTOM_ITEMS);
     if (raw) all = JSON.parse(raw);
   } catch {
     all = {};
   }
-  const current = Array.isArray(all[category]) ? all[category] : [];
-  if (!current.includes(item)) {
-    all[category] = [...current, item];
+  const forCategory = all[category] && typeof all[category] === 'object' && !Array.isArray(all[category])
+    ? all[category]
+    : {};
+  const currentGroupItems = Array.isArray(forCategory[groupName]) ? forCategory[groupName] : [];
+  if (!currentGroupItems.includes(item)) {
+    const updatedCategory = { ...forCategory, [groupName]: [...currentGroupItems, item] };
+    all[category] = updatedCategory;
     localStorage.setItem(STORAGE_KEY_CUSTOM_ITEMS, JSON.stringify(all));
-    return all[category];
+    return updatedCategory;
   }
-  return current;
+  return forCategory;
 }
 
 interface SubGroupSelectViewProps {
@@ -57,18 +67,30 @@ export const SubGroupSelectView: React.FC<SubGroupSelectViewProps> = ({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [customItemInput, setCustomItemInput] = useState('');
   const [isAddingCustom, setIsAddingCustom] = useState(false);
-  const [customItems, setCustomItems] = useState<string[]>(() => loadCustomItems(category));
+  const [customItemsByGroup, setCustomItemsByGroup] = useState<Record<string, string[]>>(() =>
+    loadCustomItemsByGroup(category)
+  );
+  const [customTargetGroup, setCustomTargetGroup] = useState<string>('');
 
   React.useEffect(() => {
-    setCustomItems(loadCustomItems(category));
+    setCustomItemsByGroup(loadCustomItemsByGroup(category));
   }, [category]);
 
   const categoryDef = CATEGORY_CARDS.find((c) => c.id === category) || CATEGORY_CARDS[0];
   const catalogGroups: WorkGroup[] = SERVICE_CATALOG[category] || [];
   const groups: WorkGroup[] = useMemo(() => {
-    if (customItems.length === 0) return catalogGroups;
-    return [...catalogGroups, { name: CUSTOM_GROUP_NAME, items: customItems }];
-  }, [catalogGroups, customItems]);
+    const catalogGroupNames = new Set(catalogGroups.map((g) => g.name));
+    const merged = catalogGroups.map((g) => {
+      const extra = customItemsByGroup[g.name];
+      return extra && extra.length > 0 ? { name: g.name, items: [...g.items, ...extra] } : g;
+    });
+    // Any custom items filed under a group name that isn't part of the catalog
+    // (shouldn't normally happen, but keeps older/edge-case data visible).
+    const extraGroups: WorkGroup[] = Object.keys(customItemsByGroup)
+      .filter((name) => !catalogGroupNames.has(name) && customItemsByGroup[name]?.length > 0)
+      .map((name) => ({ name, items: customItemsByGroup[name] }));
+    return [...merged, ...extraGroups];
+  }, [catalogGroups, customItemsByGroup]);
 
   // Toggle group expansion
   const toggleGroup = (groupName: string) => {
@@ -94,11 +116,20 @@ export const SubGroupSelectView: React.FC<SubGroupSelectViewProps> = ({
       .filter((g) => g.items.length > 0);
   }, [groups, searchQuery]);
 
+  const defaultTargetGroup =
+    Object.keys(expandedGroups).find((name) => expandedGroups[name]) || groups[0]?.name || categoryDef.name;
+
+  const handleStartAddingCustom = () => {
+    setCustomTargetGroup(defaultTargetGroup);
+    setIsAddingCustom(true);
+  };
+
   const handleCustomAdd = () => {
     const value = customItemInput.trim();
+    const targetGroup = customTargetGroup || defaultTargetGroup;
     if (value) {
       onToggleItem(value);
-      setCustomItems(persistCustomItem(category, value));
+      setCustomItemsByGroup(persistCustomItem(category, targetGroup, value));
       setCustomItemInput('');
       setIsAddingCustom(false);
     }
@@ -298,6 +329,24 @@ export const SubGroupSelectView: React.FC<SubGroupSelectViewProps> = ({
               <span className="text-xs font-bold text-slate-800">
                 Dodaj prilagođeni rad:
               </span>
+              {catalogGroups.length > 0 && (
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    Podgrupa
+                  </label>
+                  <select
+                    value={customTargetGroup}
+                    onChange={(e) => setCustomTargetGroup(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1D68F2]"
+                  >
+                    {catalogGroups.map((g) => (
+                      <option key={g.name} value={g.name}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex space-x-2">
                 <input
                   type="text"
@@ -323,7 +372,7 @@ export const SubGroupSelectView: React.FC<SubGroupSelectViewProps> = ({
             </div>
           ) : (
             <button
-              onClick={() => setIsAddingCustom(true)}
+              onClick={handleStartAddingCustom}
               className="w-full flex items-center justify-center space-x-1.5 py-1 text-xs font-bold text-[#1D68F2] hover:text-blue-700 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
