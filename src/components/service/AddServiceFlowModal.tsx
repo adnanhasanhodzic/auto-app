@@ -204,8 +204,8 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   const displayGroup = isMultiCategory ? '' : selectedGroup;
 
   return (
-    <div className="fixed inset-x-0 top-0 bottom-20 z-40 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs select-none">
-      <div className="relative w-full max-w-[430px] h-full sm:h-[780px] bg-white sm:rounded-[36px] shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs select-none">
+      <div className="relative w-full max-w-[430px] h-full sm:h-[844px] bg-white sm:rounded-[36px] shadow-2xl flex flex-col overflow-hidden">
         <AnimatePresence mode="wait">
           {/* STEP 1: CATEGORY SELECTION */}
           {step === 'category' && (
