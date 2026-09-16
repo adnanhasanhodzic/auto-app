@@ -24,6 +24,7 @@ import {
   calculateDaysRemaining,
   calculateWarrantyStatus,
 } from '../../utils/dateUtils';
+import { validateMileageForDate } from '../../utils/carUtils';
 import { DatePickerModal } from '../DatePickerModal';
 
 interface ServiceEntryFormViewProps {
@@ -34,6 +35,7 @@ interface ServiceEntryFormViewProps {
   initialGroup?: string;
   initialItems: string[];
   existingRecord?: ServiceRecord | null;
+  existingRecords: ServiceRecord[];
   onSave: (record: ServiceRecord) => void;
   onBack: () => void;
   onAddItems?: () => void;
@@ -47,6 +49,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   initialGroup,
   initialItems,
   existingRecord,
+  existingRecords,
   onSave,
   onBack,
   onAddItems,
@@ -67,6 +70,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   const [mileage, setMileage] = useState<number>(
     existingRecord?.mileage !== undefined ? existingRecord.mileage : 0
   );
+  const [mileageError, setMileageError] = useState<string | null>(null);
 
   const initialItemsList = useMemo(() => {
     if (existingRecord?.items && existingRecord.items.length > 0) {
@@ -159,6 +163,7 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
 
   const handleDateChange = (newDate: string) => {
     setDate(newDate);
+    setMileageError(null);
     // If user hasn't explicitly set a custom different date, it continues tracking date
   };
 
@@ -220,6 +225,22 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const entryDate = date.trim() || getTodayFormatted();
+    const entryMileage = Number(mileage) || car.mileage || 0;
+
+    const validation = validateMileageForDate(
+      car,
+      existingRecords,
+      entryDate,
+      entryMileage,
+      existingRecord?.id
+    );
+    if (!validation.valid) {
+      setMileageError(validation.error || 'Neispravna kilometraža.');
+      return;
+    }
+    setMileageError(null);
+
     const numericCost = parseFloat(cost.replace(',', '.')) || 0;
 
     const savedRecord: ServiceRecord = {
@@ -229,8 +250,8 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
       categoryName,
       title: title.trim() || 'Rad na vozilu',
       subGroup: initialGroup || existingRecord?.subGroup,
-      date: date.trim() || getTodayFormatted(),
-      mileage: Number(mileage) || car.mileage || 0,
+      date: entryDate,
+      mileage: entryMileage,
       items: items.length > 0 ? items : [title],
       cost: numericCost,
       currency: 'KM',
@@ -355,11 +376,20 @@ export const ServiceEntryFormView: React.FC<ServiceEntryFormViewProps> = ({
                   required
                   min="1"
                   value={mileage || ''}
-                  onChange={(e) => setMileage(Number(e.target.value))}
+                  onChange={(e) => {
+                    setMileage(Number(e.target.value));
+                    setMileageError(null);
+                  }}
                   placeholder="Unesite km"
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1D68F2]"
                 />
               </div>
+              {mileageError && (
+                <p className="mt-1.5 text-[11px] font-semibold text-red-500 flex items-start space-x-1">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>{mileageError}</span>
+                </p>
+              )}
             </div>
           </div>
         </div>
