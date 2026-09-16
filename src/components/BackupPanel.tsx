@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Download, Upload, Check, Share2 } from 'lucide-react';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import {
   STORAGE_KEY_CARS,
   STORAGE_KEY_ACTIVE_CAR_ID,
@@ -45,19 +47,24 @@ export const BackupPanel: React.FC = () => {
     setExportStatus('idle');
     const text = buildBackupString();
     const name = `moj-auto-backup-${todayStamp()}.txt`;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const file = new File([blob], name, { type: 'text/plain' });
 
-    // Preferred: native share sheet (Save to Files, email, WhatsApp, Drive, itd.)
-    const nav = navigator as Navigator & { canShare?: (data: any) => boolean; share?: (data: any) => Promise<void> };
-    if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
-      try {
-        await nav.share({ files: [file], title: 'MOJ AUTO - backup podataka' });
-        setExportStatus('shared');
-        return;
-      } catch {
-        // korisnik je otkazao ili share nije uspio - probaj fallback ispod
-      }
+    // Preferred: pravi Android meni za dijeljenje/čuvanje (Save to Files, email, WhatsApp, Drive, itd.)
+    try {
+      const written = await Filesystem.writeFile({
+        path: name,
+        data: text,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8,
+      });
+      await Share.share({
+        title: 'MOJ AUTO - backup podataka',
+        dialogTitle: 'Sačuvaj ili podijeli backup',
+        files: [written.uri],
+      });
+      setExportStatus('shared');
+      return;
+    } catch {
+      // Rezerva: kopiraj u clipboard ako Filesystem/Share iz nekog razloga nisu dostupni
     }
 
     // Fallback: kopiraj u clipboard bez prikazivanja u textarei (izbjegava zamrzavanje UI-a)
