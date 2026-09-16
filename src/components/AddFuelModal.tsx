@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Fuel, Calendar, Gauge } from 'lucide-react';
 import { ServiceRecord, CarData } from '../types';
 import { formatDateCustom } from '../utils/dateUtils';
+import { validateMileageForDate } from '../utils/carUtils';
 import { DatePickerModal } from './DatePickerModal';
 
 interface AddFuelModalProps {
@@ -10,6 +11,7 @@ interface AddFuelModalProps {
   onClose: () => void;
   car: CarData;
   existingRecord?: ServiceRecord | null;
+  existingRecords: ServiceRecord[];
   onSave: (record: ServiceRecord) => void;
 }
 
@@ -18,6 +20,7 @@ export const AddFuelModal: React.FC<AddFuelModalProps> = ({
   onClose,
   car,
   existingRecord,
+  existingRecords,
   onSave,
 }) => {
   const [date, setDate] = useState<string>(formatDateCustom(new Date()));
@@ -71,6 +74,18 @@ export const AddFuelModal: React.FC<AddFuelModalProps> = ({
     const costNum = parseFloat(cost.replace(',', '.'));
     if (isNaN(costNum) || costNum <= 0) {
       setError('Molimo unesite validan iznos u KM.');
+      return;
+    }
+
+    const mileageCheck = validateMileageForDate(
+      car,
+      existingRecords,
+      date.trim(),
+      mileageNum,
+      existingRecord?.id
+    );
+    if (!mileageCheck.valid) {
+      setError(mileageCheck.error || 'Neispravna kilometraža.');
       return;
     }
 
