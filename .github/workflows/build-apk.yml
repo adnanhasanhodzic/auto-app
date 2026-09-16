@@ -166,10 +166,43 @@ jobs:
         run: |
           mkdir -p ~/.android
           echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > "${{ github.workspace }}/debug.keystore"
+          echo "DEBUG_KEYSTORE_ABS_PATH=${{ github.workspace }}/debug.keystore" >> "$GITHUB_ENV"
           echo "SHA256 fajla keystore-a:"
-          sha256sum ~/.android/debug.keystore
+          sha256sum "${{ github.workspace }}/debug.keystore"
           echo "Provjera da je keystore ispravan (mora ispisati sertifikat, ne gresku):"
-          keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey
+          keytool -list -v -keystore "${{ github.workspace }}/debug.keystore" -storepass android -alias androiddebugkey
+
+      - name: Postavi eksplicitni signing config za debug build
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('android/app/build.gradle')
+          s = p.read_text()
+
+          signing_block = '''android {
+              signingConfigs {
+                  debug {
+                      storeFile file(System.getenv("DEBUG_KEYSTORE_ABS_PATH"))
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+          '''
+          if 'signingConfigs {' not in s:
+              s = s.replace('android {\n', signing_block, 1)
+
+          if 'debug {\n            signingConfig signingConfigs.debug' not in s:
+              s = s.replace(
+                  'buildTypes {\n        release {',
+                  'buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }\n        release {',
+                  1,
+              )
+
+          p.write_text(s)
+          PY
 
       - name: Build APK
         working-directory: android
