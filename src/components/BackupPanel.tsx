@@ -6,6 +6,7 @@ import {
   STORAGE_KEY_CAR,
   STORAGE_KEY_RECORDS,
   STORAGE_KEY_OBLIGATIONS,
+  STORAGE_KEY_CUSTOM_ITEMS,
 } from '../data';
 
 const BACKUP_KEYS = [
@@ -14,6 +15,7 @@ const BACKUP_KEYS = [
   STORAGE_KEY_CAR,
   STORAGE_KEY_RECORDS,
   STORAGE_KEY_OBLIGATIONS,
+  STORAGE_KEY_CUSTOM_ITEMS,
 ];
 
 function buildBackupString(): string {
