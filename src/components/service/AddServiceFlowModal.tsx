@@ -7,12 +7,14 @@ import { CategorySelectView } from './CategorySelectView';
 import { SubGroupSelectView } from './SubGroupSelectView';
 import { ServiceEntryFormView } from './ServiceEntryFormView';
 import { formatDateCustom } from '../../utils/dateUtils';
+import { validateMileageForDate } from '../../utils/carUtils';
 import { DatePickerModal } from '../DatePickerModal';
 
 interface AddServiceFlowModalProps {
   isOpen: boolean;
   car: CarData;
   existingRecord?: ServiceRecord | null;
+  existingRecords: ServiceRecord[];
   onClose: () => void;
   onSaveRecord: (record: ServiceRecord) => void;
 }
@@ -24,6 +26,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
   isOpen,
   car,
   existingRecord,
+  existingRecords,
   onClose,
   onSaveRecord,
 }) => {
@@ -171,6 +174,12 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
     const costNum = parseFloat(fuelCost.replace(',', '.'));
     if (isNaN(costNum) || costNum <= 0) {
       setFuelError('Molimo unesite validan iznos u KM.');
+      return;
+    }
+
+    const mileageCheck = validateMileageForDate(car, existingRecords, fuelDate.trim(), mileageNum);
+    if (!mileageCheck.valid) {
+      setFuelError(mileageCheck.error || 'Neispravna kilometraža.');
       return;
     }
 
@@ -405,6 +414,7 @@ export const AddServiceFlowModal: React.FC<AddServiceFlowModalProps> = ({
                 initialItems={selectedItems}
                 existingRecord={existingRecord}
                 onSave={handleSaveRecord}
+                existingRecords={existingRecords}
                 onAddItems={() => {
                   setAddItemsStep(selectedCategory ? 'subgroup' : 'category');
                   setIsAddingMoreItems(true);
