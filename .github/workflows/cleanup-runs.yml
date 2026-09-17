@@ -1,0 +1,56 @@
+name: Ocisti stare buildove
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Obrisi stare workflow runove
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+
+            const response = await github.paginate(
+              github.rest.actions.listWorkflowRunsForRepo,
+              {
+                owner,
+                repo,
+                per_page: 100
+              }
+            );
+
+            // Ne diraj trenutno pokrenuti cleanup
+            const runs = response
+              .filter(run => run.id !== context.runId)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const keep = runs.slice(0, 3);
+            const remove = runs.slice(3);
+
+            console.log(`Ukupno pronađeno: ${runs.length}`);
+            console.log(`Ostavljam 3 najnovija:`);
+            keep.forEach(run =>
+              console.log(`#${run.run_number} - ${run.name}`)
+            );
+
+            console.log(`Brišem ${remove.length} starih runova...`);
+
+            for (const run of remove) {
+              console.log(`Brišem #${run.run_number} - ${run.name}`);
+
+              await github.rest.actions.deleteWorkflowRun({
+                owner,
+                repo,
+                run_id: run.id
+              });
+            }
+
+            console.log("Čišćenje završeno.");
